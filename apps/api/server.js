@@ -12,6 +12,33 @@ const app = express();
 app.use(cors());
 const upload = multer({ dest: 'uploads/' });
 
+const storageDir = process.env.STORAGE_DIR || 'storage';
+const maxFileAgeMs = parseInt(
+  process.env.STORAGE_MAX_AGE_MS || String(24 * 60 * 60 * 1000),
+  10
+);
+
+async function cleanOldFiles() {
+  try {
+    const entries = await fs.promises.readdir(storageDir, {
+      withFileTypes: true,
+    });
+    const now = Date.now();
+    for (const entry of entries) {
+      const fullPath = path.join(storageDir, entry.name);
+      const stat = await fs.promises.stat(fullPath);
+      if (now - stat.mtimeMs > maxFileAgeMs) {
+        await fs.promises.rm(fullPath, { recursive: true, force: true });
+      }
+    }
+  } catch (e) {
+    if (e.code !== 'ENOENT') console.error('cleanup error', e);
+  }
+}
+
+setInterval(cleanOldFiles, 60 * 60 * 1000);
+cleanOldFiles();
+
 app.use((req, res, next) => {
   const auth = req.headers.authorization || '';
   const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
@@ -41,7 +68,7 @@ app.post('/api/scans', upload.single('file'), async (req, res) => {
 
     const id = randomUUID();
     const inputPath = file.path;
-    const outDir = path.join('storage', id);
+    const outDir = path.join(storageDir, id);
     await fs.promises.mkdir(outDir, { recursive: true });
     const glbPath = path.join(outDir, 'room.glb');
 
@@ -79,7 +106,7 @@ app.post('/api/scans', upload.single('file'), async (req, res) => {
 
 app.get('/api/scans/:id/room.glb', async (req, res) => {
   try {
-    const p = path.join('storage', req.params.id, 'room.glb');
+    const p = path.join(storageDir, req.params.id, 'room.glb');
     await fs.promises.access(p);
     res.setHeader('Content-Type','model/gltf-binary');
     fs.createReadStream(p).pipe(res);
