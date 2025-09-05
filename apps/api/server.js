@@ -106,10 +106,20 @@ app.post('/api/scans', upload.single('file'), async (req, res) => {
 
 app.get('/api/scans/:id/room.glb', async (req, res) => {
   try {
-    const p = path.join(storageDir, req.params.id, 'room.glb');
-    await fs.promises.access(p);
-    res.setHeader('Content-Type','model/gltf-binary');
-    fs.createReadStream(p).pipe(res);
+    const { id } = req.params;
+    if (!/^[0-9a-f-]{36}$/.test(id)) {
+      return res.status(400).json({ error: 'invalid id' });
+    }
+
+    const baseDir = path.resolve(storageDir);
+    const filePath = path.resolve(baseDir, id, 'room.glb');
+    if (!filePath.startsWith(baseDir + path.sep)) {
+      return res.status(403).json({ error: 'forbidden' });
+    }
+
+    await fs.promises.access(filePath);
+    res.setHeader('Content-Type', 'model/gltf-binary');
+    fs.createReadStream(filePath).pipe(res);
   } catch {
     res.status(404).json({ error: 'not found' });
   }
