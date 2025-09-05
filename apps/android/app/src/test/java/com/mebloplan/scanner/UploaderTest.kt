@@ -44,4 +44,21 @@ class UploaderTest {
         assertTrue(recorded.body.readUtf8().contains("author+name=Jan"))
         server.shutdown()
     }
+
+    @Test
+    fun mapsExtensionsToMimeTypes() {
+        val cases = mapOf(
+            "model.ply" to "model/x-ply",
+            "model.obj" to "model/obj",
+            "model.usd" to "application/usd",
+            "model.usda" to "application/usd",
+            "model.usdz" to "model/vnd.usdz+zip",
+            "model.bin" to "application/octet-stream",
+        )
+
+        for ((name, expected) in cases) {
+            val mime = Uploader.guessMimeType(File(name))
+            assertEquals(expected, mime, "extension ${'$'}{File(name).extension}")
+        }
+    }
 }
