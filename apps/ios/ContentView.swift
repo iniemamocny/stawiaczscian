@@ -84,6 +84,7 @@ struct ContentView: View {
             try handle.write(contentsOf: "Content-Disposition: form-data; name=\"file\"; filename=\"\(url.lastPathComponent)\"\r\n".data(using: .utf8)!)
             try handle.write(contentsOf: "Content-Type: application/octet-stream\r\n\r\n".data(using: .utf8)!)
             let inputHandle = try FileHandle(forReadingFrom: url)
+            defer { try? inputHandle.close() }
             while true {
                 let chunk = try inputHandle.read(upToCount: 64 * 1024)
                 if let chunk = chunk, !chunk.isEmpty {
@@ -92,7 +93,6 @@ struct ContentView: View {
                     break
                 }
             }
-            try inputHandle.close()
             try handle.write(contentsOf: "\r\n".data(using: .utf8)!)
             try handle.write(contentsOf: "--\(boundary)--\r\n".data(using: .utf8)!)
 
