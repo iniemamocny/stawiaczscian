@@ -5,6 +5,7 @@ import { spawn } from 'child_process';
 import { randomUUID } from 'crypto';
 import path from 'path';
 import fs from 'fs';
+import { pipeline } from 'stream/promises';
 import cors from 'cors';
 import 'dotenv/config';
 import PQueue from 'p-queue';
@@ -174,9 +175,27 @@ app.get('/api/scans/:id/room.glb', async (req, res) => {
 
     await fs.promises.access(filePath);
     res.setHeader('Content-Type', 'model/gltf-binary');
-    fs.createReadStream(filePath).pipe(res);
-  } catch {
-    res.status(404).json({ error: 'not found' });
+
+    const stream = fs.createReadStream(filePath);
+    stream.on('error', err => {
+      if (!res.headersSent) {
+        if (err.code === 'ENOENT') {
+          res.status(404).json({ error: 'not found' });
+        } else {
+          res.status(500).json({ error: 'server error' });
+        }
+      }
+    });
+
+    await pipeline(stream, res);
+  } catch (e) {
+    if (!res.headersSent) {
+      if (e.code === 'ENOENT') {
+        res.status(404).json({ error: 'not found' });
+      } else {
+        res.status(500).json({ error: 'server error' });
+      }
+    }
   }
 });
 
