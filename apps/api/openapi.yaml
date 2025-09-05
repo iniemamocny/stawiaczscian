@@ -3,6 +3,12 @@ info:
   title: MebloPlan Scanner API
   version: 0.1.0
 paths:
+  /health:
+    get:
+      summary: Service health check.
+      responses:
+        '200':
+          description: Service is up.
   /api/scans:
     post:
       summary: Upload scan data and convert to GLB.
