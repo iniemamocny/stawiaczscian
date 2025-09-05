@@ -118,6 +118,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        session?.close()
+        session = null
         super.onDestroy()
         scope.cancel()
     }
