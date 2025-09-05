@@ -97,38 +97,43 @@ app.post('/api/scans', upload.single('file'), async (req, res) => {
       const id = randomUUID();
       const inputPath = file.path;
       const outDir = path.join(storageDir, id);
-      await fs.promises.mkdir(outDir, { recursive: true });
       const glbPath = path.join(outDir, 'room.glb');
 
-      if (meta) {
-        await fs.promises.writeFile(
-          path.join(outDir, 'info.json'),
-          JSON.stringify(meta, null, 2)
-        );
-      }
+      try {
+        await fs.promises.mkdir(outDir, { recursive: true });
 
-      const blender = process.env.BLENDER_PATH || 'blender';
-      const script = path.resolve('./convert_blender.py');
-      const args = ['-b', '-P', script, '--', path.resolve(inputPath), path.resolve(glbPath)];
-      console.log('[BLENDER]', blender, args.join(' '));
+        if (meta) {
+          await fs.promises.writeFile(
+            path.join(outDir, 'info.json'),
+            JSON.stringify(meta, null, 2)
+          );
+        }
 
-      await new Promise((resolve, reject) => {
-        const p = spawn(blender, args, { stdio: 'inherit' });
-        p.on('error', e => reject(e));
-        p.on('exit', async code => {
-          if (code === 0) {
-            try {
-              await fs.promises.access(glbPath);
-              res.json({ id, url: `/api/scans/${id}/room.glb` });
-              resolve();
-            } catch {
+        const blender = process.env.BLENDER_PATH || 'blender';
+        const script = path.resolve('./convert_blender.py');
+        const args = ['-b', '-P', script, '--', path.resolve(inputPath), path.resolve(glbPath)];
+        console.log('[BLENDER]', blender, args.join(' '));
+
+        await new Promise((resolve, reject) => {
+          const p = spawn(blender, args, { stdio: 'inherit' });
+          p.on('error', e => reject(e));
+          p.on('exit', async code => {
+            if (code === 0) {
+              try {
+                await fs.promises.access(glbPath);
+                res.json({ id, url: `/api/scans/${id}/room.glb` });
+                resolve();
+              } catch {
+                reject(new Error('conversion failed'));
+              }
+            } else {
               reject(new Error('conversion failed'));
             }
-          } else {
-            reject(new Error('conversion failed'));
-          }
+          });
         });
-      });
+      } finally {
+        fs.promises.unlink(inputPath).catch(() => {});
+      }
     });
   } catch (e) {
     console.error(e);
