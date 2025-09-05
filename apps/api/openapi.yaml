@@ -24,7 +24,7 @@ paths:
                 file:
                   type: string
                   format: binary
-                  description: ZIP file containing scan data.
+                  description: OBJ, PLY, USD/USDA/USDZ
                 meta:
                   type: string
                   description: Additional metadata encoded as JSON or URL-encoded string.
