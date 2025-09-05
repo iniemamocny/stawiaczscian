@@ -26,14 +26,15 @@ const app = express();
 app.use(rateLimit({ windowMs: 60 * 1000, max: 30 }));
 app.use(helmet());
 app.use(cors({ origin: process.env.ALLOWED_ORIGINS?.split(',') }));
+const uploadDir = path.resolve(process.env.UPLOAD_DIR || 'uploads');
+const storageDir = path.resolve(process.env.STORAGE_DIR || 'storage');
 const upload = multer({
-  dest: 'uploads/',
+  dest: uploadDir,
   limits: {
     fileSize: parsePositiveInt(process.env.MAX_UPLOAD_BYTES, 52428800),
   },
 });
 
-const storageDir = process.env.STORAGE_DIR || 'storage';
 const maxFileAgeMs = parsePositiveInt(
   process.env.STORAGE_MAX_AGE_MS,
   24 * 60 * 60 * 1000
@@ -63,11 +64,10 @@ async function cleanOldFiles() {
 
 async function cleanupUploads() {
   try {
-    const dir = 'uploads';
-    const entries = await fs.promises.readdir(dir, { withFileTypes: true });
+    const entries = await fs.promises.readdir(uploadDir, { withFileTypes: true });
     let count = 0;
     for (const entry of entries) {
-      await fs.promises.rm(path.join(dir, entry.name), { recursive: true, force: true });
+      await fs.promises.rm(path.join(uploadDir, entry.name), { recursive: true, force: true });
       count++;
     }
     console.log(`cleanupUploads: removed ${count} file(s)`);
