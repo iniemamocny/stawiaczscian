@@ -3,6 +3,15 @@
 API requires an `API_TOKEN` environment variable. Clients must send this
 token in the `Authorization: Bearer` header with each request.
 
+## Configuration
+
+The API can be configured with the following environment variables:
+
+- `STORAGE_DIR` – directory where converted scans are stored. Defaults to
+  `storage`.
+- `STORAGE_MAX_AGE_MS` – files older than this many milliseconds are removed
+  by a periodic cleanup job. Defaults to `86400000` (24 hours).
+
 ## Metadata
 
 Send additional metadata in a `meta` field when uploading scans. The value
@@ -20,6 +29,7 @@ The response contains the scan `id`. Read the saved metadata with:
 
 ```js
 import fs from 'fs/promises';
-const info = JSON.parse(await fs.readFile(`storage/${id}/info.json`, 'utf8'));
+const dir = process.env.STORAGE_DIR || 'storage';
+const info = JSON.parse(await fs.readFile(`${dir}/${id}/info.json`, 'utf8'));
 console.log(info.author);
 ```
