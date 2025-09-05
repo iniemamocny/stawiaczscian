@@ -33,6 +33,8 @@ Wartości te zostaną udostępnione w `BuildConfig` jako `API_URL` oraz `API_TOK
 
 W pliku `apps/ios/Info.plist` ustaw klucze `API_URL` i `API_TOKEN`.
 
+Urządzenie musi obsługiwać RoomPlan (np. iPhone lub iPad z czujnikiem LiDAR).
+
 ### Web
 
 Komponent `web-snippets/ImportRoom.tsx` oczekuje adresu API w propsie `apiUrl` lub w zmiennej środowiskowej `REACT_APP_API_URL`.
