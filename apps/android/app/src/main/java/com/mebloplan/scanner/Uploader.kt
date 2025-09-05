@@ -1,40 +1,42 @@
-
 package com.mebloplan.scanner
 
-import java.io.DataOutputStream
 import java.io.File
-import java.net.HttpURLConnection
-import java.net.URL
+import java.io.IOException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.MultipartBody
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.asRequestBody
 
 object Uploader {
-    fun upload(url: String, token: String, file: File, meta: Map<String, String>): String {
-        val boundary = "Boundary-" + System.currentTimeMillis()
-        val conn = (URL(url).openConnection() as HttpURLConnection).apply {
-            requestMethod = "POST"
-            doOutput = true
-            setRequestProperty("Authorization", "Bearer $token")
-            setRequestProperty("Content-Type", "multipart/form-data; boundary=$boundary")
+    private val client = OkHttpClient()
+
+    suspend fun upload(url: String, token: String, file: File, meta: Map<String, String>): String {
+        val metaString = meta.entries.joinToString("&") { "${it.key}=${it.value}" }
+        val body = MultipartBody.Builder()
+            .setType(MultipartBody.FORM)
+            .addFormDataPart("meta", metaString)
+            .addFormDataPart(
+                name = "file",
+                filename = file.name,
+                body = file.asRequestBody("application/octet-stream".toMediaType())
+            )
+            .build()
+
+        val request = Request.Builder()
+            .url(url)
+            .addHeader("Authorization", "Bearer $token")
+            .post(body)
+            .build()
+
+        return withContext(Dispatchers.IO) {
+            client.newCall(request).execute().use { resp ->
+                val responseBody = resp.body?.string().orEmpty()
+                if (!resp.isSuccessful) throw IOException("HTTP ${'$'}{resp.code}: ${'$'}responseBody")
+                responseBody
+            }
         }
-
-        val out = DataOutputStream(conn.outputStream)
-
-        // meta
-        out.writeBytes("--$boundary\r\n")
-        out.writeBytes("Content-Disposition: form-data; name=\"meta\"\r\n\r\n")
-        out.writeBytes(meta.entries.joinToString("&") { it.key + "=" + it.value })
-        out.writeBytes("\r\n")
-
-        // file
-        out.writeBytes("--$boundary\r\n")
-        out.writeBytes("Content-Disposition: form-data; name=\"file\"; filename=\"${file.name}\"\r\n")
-        out.writeBytes("Content-Type: application/octet-stream\r\n\r\n")
-        file.inputStream().use { it.copyTo(out) }
-        out.writeBytes("\r\n--$boundary--\r\n")
-        out.flush()
-        out.close()
-
-        val code = conn.responseCode
-        val stream = if (code in 200..299) conn.inputStream else conn.errorStream
-        return stream.bufferedReader().readText()
     }
 }
