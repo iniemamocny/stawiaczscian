@@ -26,4 +26,22 @@ class UploaderTest {
         assertTrue(recorded.body.readUtf8().contains("author=Jan+Kowalski"))
         server.shutdown()
     }
+
+    @Test
+    fun encodesMetaKeys() = runBlocking {
+        val server = MockWebServer()
+        server.enqueue(MockResponse().setBody("ok"))
+        server.start()
+        val file = File.createTempFile("test", ".txt").apply { writeText("data") }
+        val result = Uploader.upload(
+            url = server.url("/upload").toString(),
+            token = "token",
+            file = file,
+            meta = mapOf("author name" to "Jan")
+        )
+        val recorded = server.takeRequest()
+        assertEquals("ok", result)
+        assertTrue(recorded.body.readUtf8().contains("author+name=Jan"))
+        server.shutdown()
+    }
 }

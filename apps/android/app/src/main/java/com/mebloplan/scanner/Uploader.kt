@@ -15,7 +15,8 @@ object Uploader {
     private val client = OkHttpClient()
 
     suspend fun upload(url: String, token: String, file: File, meta: Map<String, String>): String {
-        val metaString = meta.entries.joinToString("&") { "${it.key}=${URLEncoder.encode(it.value, "UTF-8")}" }
+        val metaString = meta.entries.joinToString("&") {
+            "${URLEncoder.encode(it.key, "UTF-8")}=${URLEncoder.encode(it.value, "UTF-8")}" }
         val body = MultipartBody.Builder()
             .setType(MultipartBody.FORM)
             .addFormDataPart("meta", metaString)
