@@ -27,11 +27,30 @@ app.post('/api/scans', upload.single('file'), async (req, res) => {
     const file = req.file;
     if (!file) return res.status(400).json({ error: 'no file' });
 
+    const rawMeta = req.body.meta;
+    let meta;
+    if (typeof rawMeta === 'string') {
+      try {
+        meta = JSON.parse(rawMeta);
+      } catch {
+        try {
+          meta = Object.fromEntries(new URLSearchParams(rawMeta));
+        } catch {}
+      }
+    }
+
     const id = randomUUID();
     const inputPath = file.path;
     const outDir = path.join('storage', id);
     await fs.promises.mkdir(outDir, { recursive: true });
     const glbPath = path.join(outDir, 'room.glb');
+
+    if (meta) {
+      await fs.promises.writeFile(
+        path.join(outDir, 'info.json'),
+        JSON.stringify(meta, null, 2)
+      );
+    }
 
     const blender = process.env.BLENDER_PATH || 'blender';
     const script = path.resolve('./convert_blender.py');
