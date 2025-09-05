@@ -82,7 +82,6 @@ struct ContentView: View {
             FileManager.default.createFile(atPath: tempURL.path, contents: nil)
             let handle = try FileHandle(forWritingTo: tempURL)
             defer {
-                try? handle.close()
                 try? FileManager.default.removeItem(at: tempURL)
             }
             // meta
@@ -109,6 +108,7 @@ struct ContentView: View {
             }
             try handle.write(contentsOf: "\r\n".data(using: .utf8)!)
             try handle.write(contentsOf: "--\(boundary)--\r\n".data(using: .utf8)!)
+            try handle.close() // Zamknięcie zapewnia pełne zapisanie danych na dysk
 
             let (respData, resp) = try await session.upload(for: request, fromFile: tempURL)
             if let http = resp as? HTTPURLResponse, http.statusCode == 200 {
