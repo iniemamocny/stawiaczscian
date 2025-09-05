@@ -22,12 +22,19 @@ function parsePositiveInt(value, fallback) {
   return parsed;
 }
 
+const uploadDir = path.resolve(process.env.UPLOAD_DIR || 'uploads');
+const storageDir = path.resolve(process.env.STORAGE_DIR || 'storage');
+
+async function initDirs() {
+  await fs.promises.mkdir(uploadDir, { recursive: true });
+  await fs.promises.mkdir(storageDir, { recursive: true });
+}
+
 const app = express();
+await initDirs();
 app.use(rateLimit({ windowMs: 60 * 1000, max: 30 }));
 app.use(helmet());
 app.use(cors({ origin: process.env.ALLOWED_ORIGINS?.split(',') }));
-const uploadDir = path.resolve(process.env.UPLOAD_DIR || 'uploads');
-const storageDir = path.resolve(process.env.STORAGE_DIR || 'storage');
 const upload = multer({
   dest: uploadDir,
   limits: {

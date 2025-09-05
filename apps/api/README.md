@@ -29,6 +29,8 @@ The API can be configured with the following environment variables:
   limit is reached, new requests are rejected with `429`. Defaults to `10`.
 - `ALLOWED_ORIGINS` – comma-separated list of allowed CORS origins (URLs).
 
+The upload and storage directories are created automatically if they do not exist.
+
 Requests are limited to 30 per minute.
 
 ## Allowed formats
