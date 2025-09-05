@@ -43,3 +43,7 @@ Both `POST /api/scans` and `GET /api/scans/{id}/room.glb` may return:
 - `401` – Unauthorized
 - `400` – Bad request
 - `500` – Server error
+
+`GET /api/scans/{id}/room.glb` may also return:
+
+- `404` – Not found
