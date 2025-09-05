@@ -12,6 +12,8 @@ paths:
   /api/scans:
     post:
       summary: Upload scan data and convert to GLB.
+      security:
+        - BearerAuth: []
       requestBody:
         required: true
         content:
@@ -59,6 +61,8 @@ paths:
   /api/scans/{id}/room.glb:
     get:
       summary: Download converted GLB model by scan id.
+      security:
+        - BearerAuth: []
       parameters:
         - name: id
           in: path
@@ -83,3 +87,8 @@ paths:
           description: Not found.
         '500':
           description: Server error.
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer

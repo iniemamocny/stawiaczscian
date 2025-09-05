@@ -12,6 +12,8 @@ token in the `Authorization: Bearer` header with each request.
 
 The API can be configured with the following environment variables:
 
+- `API_TOKEN` – secret token used for Bearer authentication. Clients must
+  send it in the `Authorization: Bearer` header with each request.
 - `STORAGE_DIR` – directory where converted scans are stored. Defaults to
   `storage`.
 - `STORAGE_MAX_AGE_MS` – files older than this many milliseconds are removed
