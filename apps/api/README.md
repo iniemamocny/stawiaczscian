@@ -13,6 +13,8 @@ The API can be configured with the following environment variables:
   by a periodic cleanup job. Defaults to `86400000` (24 hours).
 - `MAX_UPLOAD_BYTES` – maximum allowed upload size in bytes. Defaults to
   `52428800` (50 MB).
+- `MAX_META_BYTES` – maximum allowed metadata size in bytes. Defaults to
+  `16384` (16 kB).
 - `CONCURRENCY` – maximum number of conversions processed in parallel.
   Defaults to `2`.
 - `QUEUE_LIMIT` – how many conversion requests may wait in queue. When the
@@ -39,7 +41,8 @@ Uploaded source files are deleted after conversion.
 
 Send additional metadata in a `meta` field when uploading scans. The value
 can be JSON or a URL-encoded string. The server stores the parsed data next
-to the generated model as `info.json`.
+to the generated model as `info.json`. Metadata larger than `MAX_META_BYTES`
+is rejected.
 
 ```bash
 curl -H "Authorization: Bearer $API_TOKEN" \
