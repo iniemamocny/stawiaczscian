@@ -14,7 +14,11 @@ const upload = multer({ dest: 'uploads/' });
 
 app.use((req, res, next) => {
   const auth = req.headers.authorization || '';
-  if (!auth.startsWith('Bearer ')) return res.status(401).json({ error: 'no token' });
+  const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
+  if (!token) return res.status(401).json({ error: 'no token' });
+  if (token !== process.env.API_TOKEN) {
+    return res.status(401).json({ error: 'invalid token' });
+  }
   next();
 });
 
