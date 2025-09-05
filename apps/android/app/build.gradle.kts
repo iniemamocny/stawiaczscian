@@ -1,10 +1,29 @@
 
+import java.util.Properties
+
 plugins { id("com.android.application"); id("org.jetbrains.kotlin.android") }
+
+val localProps = Properties()
+val localPropsFile = rootProject.file("local.properties")
+if (localPropsFile.exists()) {
+    localProps.load(localPropsFile.inputStream())
+}
+
 android {
-    namespace "com.mebloplan.scanner"
-    compileSdk 35
-    defaultConfig { applicationId "com.mebloplan.scanner"; minSdk 26; targetSdk 35; versionCode 1; versionName "1.0" }
-    buildTypes { release { isMinifyEnabled = false } }
+    namespace = "com.mebloplan.scanner"
+    compileSdk = 35
+    defaultConfig {
+        applicationId = "com.mebloplan.scanner"
+        minSdk = 26
+        targetSdk = 35
+        versionCode = 1
+        versionName = "1.0"
+        val apiUrl = localProps.getProperty("API_URL", "")
+        val apiToken = localProps.getProperty("API_TOKEN", "")
+        buildConfigField("String", "API_URL", "\"${apiUrl}\"")
+        buildConfigField("String", "API_TOKEN", "\"${apiToken}\"")
+    }
+    buildTypes { getByName("release") { isMinifyEnabled = false } }
 }
 dependencies {
     implementation("com.google.ar:core:1.46.0")

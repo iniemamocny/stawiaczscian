@@ -37,9 +37,14 @@ function RoomModel({ url }: { url: string }) {
   return scene ? <primitive object={scene} /> : null;
 }
 
-export default function ImportRoom({ id }: { id: string }) {
+export default function ImportRoom({ id, apiUrl }: { id: string; apiUrl?: string }) {
   const [fileUrl, setFileUrl] = useState<string | null>(null);
-  useEffect(() => { setFileUrl(`http://localhost:4000/api/scans/${id}/room.glb`); }, [id]);
+  const baseUrl = apiUrl ?? process.env.REACT_APP_API_URL ?? "";
+  useEffect(() => {
+    if (baseUrl) {
+      setFileUrl(`${baseUrl}/api/scans/${id}/room.glb`);
+    }
+  }, [id, baseUrl]);
   return (
     <div style={{ height: 600 }}>
       <Canvas camera={{ position: [2, 2, 2], fov: 50 }}>

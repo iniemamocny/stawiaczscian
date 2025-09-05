@@ -146,8 +146,8 @@ class MainActivity : AppCompatActivity() {
         scope.launch {
             try {
                 val resp = Uploader.upload(
-                    url = "http://10.0.2.2:4000/api/scans",
-                    token = "REPLACE_WITH_API_TOKEN",
+                    url = BuildConfig.API_URL,
+                    token = BuildConfig.API_TOKEN,
                     file = f,
                     meta = mapOf(
                         "platform" to "android",

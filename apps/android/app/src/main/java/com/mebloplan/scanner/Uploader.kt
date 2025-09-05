@@ -14,7 +14,12 @@ import okhttp3.RequestBody.Companion.asRequestBody
 object Uploader {
     private val client = OkHttpClient()
 
-    suspend fun upload(url: String, token: String, file: File, meta: Map<String, String>): String {
+    suspend fun upload(
+        url: String = BuildConfig.API_URL,
+        token: String = BuildConfig.API_TOKEN,
+        file: File,
+        meta: Map<String, String>
+    ): String {
         val metaString = meta.entries.joinToString("&") {
             "${URLEncoder.encode(it.key, "UTF-8")}=${URLEncoder.encode(it.value, "UTF-8")}" }
         val body = MultipartBody.Builder()
