@@ -58,6 +58,19 @@ app.post('/api/scans', upload.single('file'), async (req, res) => {
   try {
     const file = req.file;
     if (!file) return res.status(400).json({ error: 'no file' });
+    const ext = path.extname(file.originalname).toLowerCase();
+    const allowedFormats = {
+      '.obj': ['text/plain', 'application/octet-stream', 'model/obj'],
+      '.ply': ['application/octet-stream', 'model/x-ply'],
+      '.usd': ['application/octet-stream', 'model/vnd.usd', 'application/usd'],
+      '.usda': ['application/octet-stream', 'model/vnd.usd', 'application/usd'],
+      '.usdz': ['model/vnd.usdz+zip', 'application/octet-stream'],
+    };
+    const allowedMimes = allowedFormats[ext];
+    if (!allowedMimes || !allowedMimes.includes(file.mimetype)) {
+      await fs.promises.unlink(file.path).catch(() => {});
+      return res.status(400).json({ error: 'invalid file type' });
+    }
 
     const rawMeta = req.body.meta;
     let meta;

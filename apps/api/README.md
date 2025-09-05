@@ -14,6 +14,18 @@ The API can be configured with the following environment variables:
 - `MAX_UPLOAD_BYTES` – maximum allowed upload size in bytes. Defaults to
   `52428800` (50 MB).
 
+## Allowed formats
+
+Uploads are accepted only in the following file formats:
+
+- `.obj`
+- `.ply`
+- `.usd`
+- `.usda`
+- `.usdz`
+
+Files with other extensions are rejected.
+
 ## Metadata
 
 Send additional metadata in a `meta` field when uploading scans. The value
