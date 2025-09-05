@@ -95,6 +95,7 @@ Both `POST http://localhost:4000/api/scans` and
 `GET http://localhost:4000/api/scans/{id}/room.glb` may also return:
 
 - `404` – Not found
+- `429` – Too many requests
 
 ## Graceful shutdown
 
