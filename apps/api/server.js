@@ -30,8 +30,26 @@ async function initDirs() {
   await fs.promises.mkdir(storageDir, { recursive: true });
 }
 
+async function verifyBlender() {
+  const blender = process.env.BLENDER_PATH || 'blender';
+  await new Promise((resolve, reject) => {
+    const p = spawn(blender, ['--version'], { stdio: 'ignore' });
+    p.on('error', err => reject(err));
+    p.on('exit', code => {
+      if (code === 0) resolve();
+      else reject(new Error('Blender exited with code ' + code));
+    });
+  });
+}
+
 const app = express();
 await initDirs();
+try {
+  await verifyBlender();
+} catch (e) {
+  console.error('Blender check failed', e);
+  process.exit(1);
+}
 const RETRY_AFTER_SECONDS = 60;
 const rateLimitWindowMs = RETRY_AFTER_SECONDS * 1000;
 app.use(
