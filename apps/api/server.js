@@ -59,8 +59,25 @@ async function cleanOldFiles() {
   }
 }
 
+async function cleanupUploads() {
+  try {
+    const dir = 'uploads';
+    const entries = await fs.promises.readdir(dir, { withFileTypes: true });
+    let count = 0;
+    for (const entry of entries) {
+      await fs.promises.rm(path.join(dir, entry.name), { recursive: true, force: true });
+      count++;
+    }
+    console.log(`cleanupUploads: removed ${count} file(s)`);
+  } catch (e) {
+    if (e.code !== 'ENOENT') console.error('cleanup uploads error', e);
+  }
+}
+
 setInterval(cleanOldFiles, 60 * 60 * 1000);
+setInterval(cleanupUploads, 60 * 60 * 1000);
 cleanOldFiles();
+cleanupUploads();
 
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
