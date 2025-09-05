@@ -56,9 +56,10 @@ curl -H "Authorization: Bearer $API_TOKEN" \
   http://localhost:4000/api/scans
 ```
 
-The response contains the scan `id` (UUID) and `url`. Use the returned `id`
-in `GET /api/scans/{id}/room.glb` to download the converted model. Read the
-saved metadata with:
+The response contains the scan `id` (UUID) and `url`, for example
+`http://localhost:4000/api/scans/{id}/room.glb`. Use this `url` or the
+`id` with `GET http://localhost:4000/api/scans/{id}/room.glb` to download
+the converted model. Read the saved metadata with:
 
 ```js
 import fs from 'fs/promises';
@@ -69,16 +70,17 @@ console.log(info.author);
 
 ## Responses
 
-Both `POST /api/scans` and `GET /api/scans/{id}/room.glb` may return:
+Both `POST http://localhost:4000/api/scans` and
+`GET http://localhost:4000/api/scans/{id}/room.glb` may return:
 
 - `401` – Unauthorized
 - `400` – Bad request
 - `500` – Server error
 
-`POST /api/scans` may also return:
+`POST http://localhost:4000/api/scans` may also return:
 
 - `429` – Too many requests (conversion queue full)
 
-`GET /api/scans/{id}/room.glb` may also return:
+`GET http://localhost:4000/api/scans/{id}/room.glb` may also return:
 
 - `404` – Not found

@@ -46,7 +46,8 @@ paths:
                   url:
                     type: string
                     format: uri
-                    description: URL to download the GLB file.
+                    description: Full URL to download the GLB file.
+                    example: http://localhost:4000/api/scans/123e4567-e89b-12d3-a456-426614174000/room.glb
         '400':
           description: Bad request.
         '401':

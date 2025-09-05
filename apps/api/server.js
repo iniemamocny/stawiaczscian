@@ -168,7 +168,8 @@ app.post('/api/scans', upload.single('file'), async (req, res) => {
             if (code === 0) {
               try {
                 await fs.promises.access(glbPath);
-                res.json({ id, url: `/api/scans/${id}/room.glb` });
+                const base = `${req.protocol}://${req.get('host')}`;
+                res.json({ id, url: `${base}/api/scans/${id}/room.glb` });
                 resolve();
               } catch {
                 reject(new Error('conversion failed'));
