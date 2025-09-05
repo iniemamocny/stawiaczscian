@@ -128,7 +128,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun uploadLast() {
         val f = lastPlyFile ?: run { info.text = "Brak pliku do wysłania"; return }
-        Thread {
+        scope.launch {
             try {
                 val resp = Uploader.upload(
                     url = "http://10.0.2.2:4000/api/scans",
@@ -136,10 +136,10 @@ class MainActivity : AppCompatActivity() {
                     file = f,
                     meta = mapOf("platform" to "android", "format" to "ply")
                 )
-                runOnUiThread { info.text = resp }
+                withContext(Dispatchers.Main) { info.text = resp }
             } catch (e: Exception) {
-                runOnUiThread { info.text = "Błąd wysyłki: ${e.message}" }
+                withContext(Dispatchers.Main) { info.text = "Błąd wysyłki: ${e.message}" }
             }
-        }.start()
+        }
     }
 }
