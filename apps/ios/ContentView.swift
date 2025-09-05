@@ -57,9 +57,11 @@ struct ContentView: View {
         defer { isUploading = false }
 
         do {
-            let token = "REPLACE_WITH_API_TOKEN"
+            let token = Bundle.main.object(forInfoDictionaryKey: "API_TOKEN") as? String ?? ""
+            let apiUrlString = Bundle.main.object(forInfoDictionaryKey: "API_URL") as? String ?? ""
             let boundary = "Boundary-\(UUID().uuidString)"
-            var request = URLRequest(url: URL(string: "http://localhost:4000/api/scans")!)
+            guard let apiUrl = URL(string: apiUrlString) else { return }
+            var request = URLRequest(url: apiUrl)
             request.httpMethod = "POST"
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
             request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
