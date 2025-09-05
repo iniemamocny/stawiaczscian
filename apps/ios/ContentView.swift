@@ -66,6 +66,11 @@ struct ContentView: View {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
             request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
 
+            let config = URLSessionConfiguration.default
+            config.timeoutIntervalForRequest = 30
+            config.timeoutIntervalForResource = 30
+            let session = URLSession(configuration: config)
+
             let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
             FileManager.default.createFile(atPath: tempURL.path, contents: nil)
             let handle = try FileHandle(forWritingTo: tempURL)
@@ -98,7 +103,7 @@ struct ContentView: View {
             try handle.write(contentsOf: "\r\n".data(using: .utf8)!)
             try handle.write(contentsOf: "--\(boundary)--\r\n".data(using: .utf8)!)
 
-            let (respData, resp) = try await URLSession.shared.upload(for: request, fromFile: tempURL)
+            let (respData, resp) = try await session.upload(for: request, fromFile: tempURL)
             if let http = resp as? HTTPURLResponse, http.statusCode == 200 {
                 uploadResult = String(data: respData, encoding: .utf8) ?? "OK"
             } else {
