@@ -7,6 +7,7 @@ import androidx.appcompat.app.AppCompatActivity
 import android.widget.Button
 import android.widget.ProgressBar
 import android.widget.TextView
+import android.util.Log
 import com.google.ar.core.Config
 import com.google.ar.core.Frame
 import com.google.ar.core.PointCloud
@@ -36,6 +37,18 @@ class MainActivity : AppCompatActivity() {
 
         btnScan.setOnClickListener { startScan() }
         btnUpload.setOnClickListener { uploadLast() }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        session?.resume()
+        Log.d("MainActivity", "Session resumed")
+    }
+
+    override fun onPause() {
+        session?.pause()
+        Log.d("MainActivity", "Session paused")
+        super.onPause()
     }
 
     private fun ensureSession(): Boolean {
