@@ -2,3 +2,26 @@ openapi: 3.0.3
 info:
   title: MebloPlan Scanner API
   version: 0.1.0
+paths:
+  /api/scans:
+    post:
+      summary: Upload scan data and convert to GLB.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: ZIP file containing scan data.
+                meta:
+                  type: string
+                  description: Additional metadata encoded as JSON or URL-encoded string.
+      responses:
+        '200':
+          description: Conversion completed.
