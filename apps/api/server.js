@@ -23,7 +23,7 @@ app.post('/api/scans', upload.single('file'), async (req, res) => {
     const file = req.file;
     if (!file) return res.status(400).json({ error: 'no file' });
 
-    const id = crypto.randomUUID?.() || Math.random().toString(36).slice(2);
+    const id = randomUUID();
     const inputPath = file.path;
     const outDir = path.join('storage', id);
     fs.mkdirSync(outDir, { recursive: true });
