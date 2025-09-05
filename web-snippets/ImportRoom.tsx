@@ -5,7 +5,13 @@ import { OrbitControls } from "@react-three/drei";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
 import * as THREE from "three";
 
-function RoomModel({ url }: { url: string }) {
+function RoomModel({
+  url,
+  onError,
+}: {
+  url: string;
+  onError: (error: unknown) => void;
+}) {
   const [scene, setScene] = useState<THREE.Group | null>(null);
   const sceneRef = useRef<THREE.Group | null>(null);
   useEffect(() => {
@@ -17,7 +23,10 @@ function RoomModel({ url }: { url: string }) {
         setScene(gltf.scene);
       },
       undefined,
-      (error) => console.error("Error loading model:", error)
+      (error) => {
+        console.error("Error loading model:", error);
+        onError(error);
+      }
     );
     return () => {
       sceneRef.current?.traverse((object) => {
@@ -33,12 +42,13 @@ function RoomModel({ url }: { url: string }) {
       });
       sceneRef.current = null;
     };
-  }, [url]);
+  }, [url, onError]);
   return scene ? <primitive object={scene} /> : null;
 }
 
 export default function ImportRoom({ id, apiUrl }: { id: string; apiUrl?: string }) {
   const [fileUrl, setFileUrl] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const baseUrl = apiUrl ?? process.env.REACT_APP_API_URL ?? "";
   useEffect(() => {
     if (baseUrl) {
@@ -49,9 +59,21 @@ export default function ImportRoom({ id, apiUrl }: { id: string; apiUrl?: string
     <div style={{ height: 600 }}>
       <Canvas camera={{ position: [2, 2, 2], fov: 50 }}>
         <ambientLight intensity={0.8} />
-        <Suspense fallback={null}>{fileUrl && <RoomModel url={fileUrl} />}</Suspense>
+        <Suspense fallback={<div>Loading model…</div>}>
+          {fileUrl && (
+            <RoomModel
+              url={fileUrl}
+              onError={(err) =>
+                setError(
+                  err instanceof Error ? err.message : "Error loading model"
+                )
+              }
+            />
+          )}
+        </Suspense>
         <OrbitControls makeDefault />
       </Canvas>
+      {error && <div style={{ color: "red" }}>{error}</div>}
     </div>
   );
 }
