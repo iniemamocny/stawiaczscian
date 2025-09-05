@@ -1,6 +1,8 @@
 
 package com.mebloplan.scanner
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.os.Bundle
 import android.view.View
 import androidx.appcompat.app.AppCompatActivity
@@ -8,6 +10,8 @@ import android.widget.Button
 import android.widget.ProgressBar
 import android.widget.TextView
 import android.util.Log
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import com.google.ar.core.Config
 import com.google.ar.core.Frame
 import com.google.ar.core.PointCloud
@@ -27,6 +31,7 @@ class MainActivity : AppCompatActivity() {
 
     private var lastPlyFile: File? = null
     private val scope = CoroutineScope(Dispatchers.Default)
+    private val CAMERA_PERMISSION_CODE = 1001
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -74,6 +79,15 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun startScan() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
+            != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(Manifest.permission.CAMERA),
+                CAMERA_PERMISSION_CODE
+            )
+            return
+        }
         if (!ensureSession()) return
         btnScan.isEnabled = false
         progressBar.visibility = View.VISIBLE
@@ -123,6 +137,22 @@ class MainActivity : AppCompatActivity() {
         session = null
         super.onDestroy()
         scope.cancel()
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == CAMERA_PERMISSION_CODE) {
+            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                startScan()
+            } else {
+                info.text = "Brak uprawnień do aparatu"
+                btnScan.isEnabled = false
+            }
+        }
     }
 
     private fun writePly(file: File, pts: List<Float>) {
