@@ -7,6 +7,7 @@ import path from 'path';
 import fs from 'fs';
 import cors from 'cors';
 import 'dotenv/config';
+import PQueue from 'p-queue';
 
 const app = express();
 app.use(cors());
@@ -22,6 +23,10 @@ const maxFileAgeMs = parseInt(
   process.env.STORAGE_MAX_AGE_MS || String(24 * 60 * 60 * 1000),
   10
 );
+
+const concurrency = parseInt(process.env.CONCURRENCY || '2', 10);
+const queueLimit = parseInt(process.env.QUEUE_LIMIT || '10', 10);
+const queue = new PQueue({ concurrency });
 
 async function cleanOldFiles() {
   try {
@@ -58,6 +63,10 @@ app.post('/api/scans', upload.single('file'), async (req, res) => {
   try {
     const file = req.file;
     if (!file) return res.status(400).json({ error: 'no file' });
+    if (queue.size + queue.pending >= queueLimit) {
+      await fs.promises.unlink(file.path).catch(() => {});
+      return res.status(429).json({ error: 'too many requests' });
+    }
     const ext = path.extname(file.originalname).toLowerCase();
     const allowedFormats = {
       '.obj': ['text/plain', 'application/octet-stream', 'model/obj'],
@@ -84,41 +93,48 @@ app.post('/api/scans', upload.single('file'), async (req, res) => {
       }
     }
 
-    const id = randomUUID();
-    const inputPath = file.path;
-    const outDir = path.join(storageDir, id);
-    await fs.promises.mkdir(outDir, { recursive: true });
-    const glbPath = path.join(outDir, 'room.glb');
+    await queue.add(async () => {
+      const id = randomUUID();
+      const inputPath = file.path;
+      const outDir = path.join(storageDir, id);
+      await fs.promises.mkdir(outDir, { recursive: true });
+      const glbPath = path.join(outDir, 'room.glb');
 
-    if (meta) {
-      await fs.promises.writeFile(
-        path.join(outDir, 'info.json'),
-        JSON.stringify(meta, null, 2)
-      );
-    }
-
-    const blender = process.env.BLENDER_PATH || 'blender';
-    const script = path.resolve('./convert_blender.py');
-    const args = ['-b','-P',script,'--', path.resolve(inputPath), path.resolve(glbPath)];
-    console.log('[BLENDER]', blender, args.join(' '));
-
-    const p = spawn(blender, args, { stdio: 'inherit' });
-    p.on('error', e => { console.error('Spawn error:', e); try { res.status(500).json({ error: 'spawn failed', detail: String(e) }); } catch {} });
-    p.on('exit', async code => {
-      if (code === 0) {
-        try {
-          await fs.promises.access(glbPath);
-          res.json({ id, url: `/api/scans/${id}/room.glb` });
-        } catch {
-          res.status(500).json({ error: 'conversion failed', code });
-        }
-      } else {
-        res.status(500).json({ error: 'conversion failed', code });
+      if (meta) {
+        await fs.promises.writeFile(
+          path.join(outDir, 'info.json'),
+          JSON.stringify(meta, null, 2)
+        );
       }
+
+      const blender = process.env.BLENDER_PATH || 'blender';
+      const script = path.resolve('./convert_blender.py');
+      const args = ['-b', '-P', script, '--', path.resolve(inputPath), path.resolve(glbPath)];
+      console.log('[BLENDER]', blender, args.join(' '));
+
+      await new Promise((resolve, reject) => {
+        const p = spawn(blender, args, { stdio: 'inherit' });
+        p.on('error', e => reject(e));
+        p.on('exit', async code => {
+          if (code === 0) {
+            try {
+              await fs.promises.access(glbPath);
+              res.json({ id, url: `/api/scans/${id}/room.glb` });
+              resolve();
+            } catch {
+              reject(new Error('conversion failed'));
+            }
+          } else {
+            reject(new Error('conversion failed'));
+          }
+        });
+      });
     });
   } catch (e) {
     console.error(e);
-    res.status(500).json({ error: 'server error' });
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'server error' });
+    }
   }
 });
 

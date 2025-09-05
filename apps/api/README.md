@@ -13,6 +13,10 @@ The API can be configured with the following environment variables:
   by a periodic cleanup job. Defaults to `86400000` (24 hours).
 - `MAX_UPLOAD_BYTES` – maximum allowed upload size in bytes. Defaults to
   `52428800` (50 MB).
+- `CONCURRENCY` – maximum number of conversions processed in parallel.
+  Defaults to `2`.
+- `QUEUE_LIMIT` – how many conversion requests may wait in queue. When the
+  limit is reached, new requests are rejected with `429`. Defaults to `10`.
 
 ## Allowed formats
 
@@ -55,6 +59,10 @@ Both `POST /api/scans` and `GET /api/scans/{id}/room.glb` may return:
 - `401` – Unauthorized
 - `400` – Bad request
 - `500` – Server error
+
+`POST /api/scans` may also return:
+
+- `429` – Too many requests (conversion queue full)
 
 `GET /api/scans/{id}/room.glb` may also return:
 
