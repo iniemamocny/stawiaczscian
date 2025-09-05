@@ -8,6 +8,7 @@ import fs from 'fs';
 import cors from 'cors';
 import 'dotenv/config';
 import PQueue from 'p-queue';
+import FileType from 'file-type';
 
 const app = express();
 app.use(cors({ origin: process.env.ALLOWED_ORIGINS?.split(',') }));
@@ -77,6 +78,12 @@ app.post('/api/scans', upload.single('file'), async (req, res) => {
     };
     const allowedMimes = allowedFormats[ext];
     if (!allowedMimes || !allowedMimes.includes(file.mimetype)) {
+      await fs.promises.unlink(file.path).catch(() => {});
+      return res.status(400).json({ error: 'invalid file type' });
+    }
+
+    const detected = await FileType.fromFile(file.path).catch(() => null);
+    if (!detected || !allowedMimes.includes(detected.mime)) {
       await fs.promises.unlink(file.path).catch(() => {});
       return res.status(400).json({ error: 'invalid file type' });
     }
