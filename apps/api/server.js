@@ -51,6 +51,8 @@ async function cleanOldFiles() {
 setInterval(cleanOldFiles, 60 * 60 * 1000);
 cleanOldFiles();
 
+app.get('/health', (req, res) => res.json({ status: 'ok' }));
+
 app.use((req, res, next) => {
   const auth = req.headers.authorization || '';
   const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';

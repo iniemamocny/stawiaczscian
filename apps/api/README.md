@@ -3,6 +3,11 @@
 API requires an `API_TOKEN` environment variable. Clients must send this
 token in the `Authorization: Bearer` header with each request.
 
+## Health check
+
+`GET /health` returns `{"status":"ok"}` and does not require an
+`Authorization` header. Use it to verify that the service is running.
+
 ## Configuration
 
 The API can be configured with the following environment variables:
