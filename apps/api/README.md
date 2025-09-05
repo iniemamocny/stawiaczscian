@@ -35,3 +35,11 @@ const dir = process.env.STORAGE_DIR || 'storage';
 const info = JSON.parse(await fs.readFile(`${dir}/${id}/info.json`, 'utf8'));
 console.log(info.author);
 ```
+
+## Responses
+
+Both `POST /api/scans` and `GET /api/scans/{id}/room.glb` may return:
+
+- `401` – Unauthorized
+- `400` – Bad request
+- `500` – Server error
