@@ -13,7 +13,9 @@ struct RoomPlanScannerView: UIViewRepresentable {
         config.captureMethod = .LiDAR
         view.captureSession = RoomCaptureSession()
         view.captureSession.delegate = context.coordinator
-        view.captureSession.run(configuration: config)
+        if RoomCaptureSession.isSupported {
+            view.captureSession.run(configuration: config)
+        }
         return view
     }
     func updateUIView(_ uiView: RoomCaptureView, context: Context) {}

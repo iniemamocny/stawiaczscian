@@ -1,6 +1,7 @@
 
 import SwiftUI
 import Foundation
+import RoomPlan
 
 struct ContentView: View {
     @State private var lastExportURL: URL? = nil
@@ -12,37 +13,43 @@ struct ContentView: View {
     var body: some View {
         NavigationView {
             VStack(spacing: 16) {
-                RoomPlanScannerView { url in
-                    lastExportURL = url
-                    exportFinished = true
-                }
-                .id(scannerId)
-                .frame(maxWidth: .infinity, maxHeight: 380)
-                .background(Color.black.opacity(0.05))
-                .clipShape(RoundedRectangle(cornerRadius: 24))
+                if RoomCaptureSession.isSupported {
+                    RoomPlanScannerView { url in
+                        lastExportURL = url
+                        exportFinished = true
+                    }
+                    .id(scannerId)
+                    .frame(maxWidth: .infinity, maxHeight: 380)
+                    .background(Color.black.opacity(0.05))
+                    .clipShape(RoundedRectangle(cornerRadius: 24))
 
-                if let url = lastExportURL {
-                    Text("Zapisano: \(url.lastPathComponent)").font(.footnote).foregroundColor(.secondary)
-                    if exportFinished {
-                        Text("Eksport zakończony").font(.footnote).foregroundColor(.green)
-                    }
-                    Button { Task { await uploadFile(url: url) } } label: {
-                        HStack { if isUploading { ProgressView() }; Text("Wyślij do MebloPlan") }
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(isUploading)
-                    if exportFinished {
-                        Button("Skanuj ponownie") {
-                            lastExportURL = nil
-                            exportFinished = false
-                            scannerId = UUID()
+                    if let url = lastExportURL {
+                        Text("Zapisano: \(url.lastPathComponent)").font(.footnote).foregroundColor(.secondary)
+                        if exportFinished {
+                            Text("Eksport zakończony").font(.footnote).foregroundColor(.green)
                         }
+                        Button { Task { await uploadFile(url: url) } } label: {
+                            HStack { if isUploading { ProgressView() }; Text("Wyślij do MebloPlan") }
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(isUploading)
+                        if exportFinished {
+                            Button("Skanuj ponownie") {
+                                lastExportURL = nil
+                                exportFinished = false
+                                scannerId = UUID()
+                            }
+                        }
+                    } else {
+                        Text("Zeskanuj pokój i zapisz plik przed wysyłką.").font(.footnote).foregroundColor(.secondary)
                     }
-                } else {
-                    Text("Zeskanuj pokój i zapisz plik przed wysyłką.").font(.footnote).foregroundColor(.secondary)
-                }
 
-                if let result = uploadResult { Text(result).font(.callout).foregroundColor(.green) }
+                    if let result = uploadResult { Text(result).font(.callout).foregroundColor(.green) }
+                } else {
+                    Text("To urządzenie nie obsługuje RoomPlan.")
+                        .font(.footnote)
+                        .foregroundColor(.secondary)
+                }
                 Spacer()
             }
             .padding()
