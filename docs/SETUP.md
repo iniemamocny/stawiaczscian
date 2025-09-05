@@ -36,3 +36,7 @@ W pliku `apps/ios/Info.plist` ustaw klucze `API_URL` i `API_TOKEN`.
 ### Web
 
 Komponent `web-snippets/ImportRoom.tsx` oczekuje adresu API w propsie `apiUrl` lub w zmiennej środowiskowej `REACT_APP_API_URL`.
+
+## Limity czasowe połączeń
+
+Aplikacje mobilne używają domyślnego limitu czasu wynoszącego 30 s na nawiązanie, odczyt i zapis danych podczas komunikacji z API.
