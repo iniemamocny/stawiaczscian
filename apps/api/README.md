@@ -31,7 +31,9 @@ The API can be configured with the following environment variables:
 
 The upload and storage directories are created automatically if they do not exist.
 
-Requests are limited to 30 per minute.
+Requests are limited to 30 per minute. When a limit is exceeded the server
+responds with `429` and includes a `Retry-After: 60` header telling clients how
+many seconds to wait before retrying.
 
 ## Allowed formats
 
@@ -83,10 +85,12 @@ Both `POST http://localhost:4000/api/scans` and
 - `401` – Unauthorized
 - `400` – Bad request
 - `500` – Server error
+- `429` – Too many requests (rate limit exceeded)
 
 `POST http://localhost:4000/api/scans` may also return:
 
 - `429` – Too many requests (conversion queue full)
+  (includes a `Retry-After` header with wait time in seconds)
 
 `GET http://localhost:4000/api/scans/{id}/room.glb` may also return:
 
