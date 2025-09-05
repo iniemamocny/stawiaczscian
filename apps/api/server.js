@@ -11,23 +11,32 @@ import 'dotenv/config';
 import PQueue from 'p-queue';
 import FileType from 'file-type';
 
+function parsePositiveInt(value, fallback) {
+  const parsed = parseInt(value, 10);
+  if (Number.isNaN(parsed) || parsed <= 0) {
+    console.warn(`Invalid value "${value}"; using default ${fallback}`);
+    return fallback;
+  }
+  return parsed;
+}
+
 const app = express();
 app.use(cors({ origin: process.env.ALLOWED_ORIGINS?.split(',') }));
 const upload = multer({
   dest: 'uploads/',
   limits: {
-    fileSize: parseInt(process.env.MAX_UPLOAD_BYTES || '52428800', 10),
+    fileSize: parsePositiveInt(process.env.MAX_UPLOAD_BYTES, 52428800),
   },
 });
 
 const storageDir = process.env.STORAGE_DIR || 'storage';
-const maxFileAgeMs = parseInt(
-  process.env.STORAGE_MAX_AGE_MS || String(24 * 60 * 60 * 1000),
-  10
+const maxFileAgeMs = parsePositiveInt(
+  process.env.STORAGE_MAX_AGE_MS,
+  24 * 60 * 60 * 1000
 );
 
-const concurrency = parseInt(process.env.CONCURRENCY || '2', 10);
-const queueLimit = parseInt(process.env.QUEUE_LIMIT || '10', 10);
+const concurrency = parsePositiveInt(process.env.CONCURRENCY, 2);
+const queueLimit = parsePositiveInt(process.env.QUEUE_LIMIT, 10);
 const queue = new PQueue({ concurrency });
 
 async function cleanOldFiles() {
