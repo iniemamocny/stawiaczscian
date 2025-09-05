@@ -82,6 +82,11 @@ app.post('/api/scans', upload.single('file'), async (req, res) => {
     }
 
     const rawMeta = req.body.meta;
+    const maxMetaBytes = parseInt(process.env.MAX_META_BYTES || '16384', 10);
+    if (typeof rawMeta === 'string' && rawMeta.length > maxMetaBytes) {
+      await fs.promises.unlink(file.path).catch(() => {});
+      return res.status(400).json({ error: 'metadata too large' });
+    }
     let meta;
     if (typeof rawMeta === 'string') {
       try {
@@ -91,6 +96,10 @@ app.post('/api/scans', upload.single('file'), async (req, res) => {
           meta = Object.fromEntries(new URLSearchParams(rawMeta));
         } catch {}
       }
+    }
+    if (meta && Buffer.byteLength(JSON.stringify(meta)) > maxMetaBytes) {
+      await fs.promises.unlink(file.path).catch(() => {});
+      return res.status(400).json({ error: 'metadata too large' });
     }
 
     await queue.add(async () => {
