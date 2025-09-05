@@ -56,7 +56,9 @@ curl -H "Authorization: Bearer $API_TOKEN" \
   http://localhost:4000/api/scans
 ```
 
-The response contains the scan `id`. Read the saved metadata with:
+The response contains the scan `id` (UUID) and `url`. Use the returned `id`
+in `GET /api/scans/{id}/room.glb` to download the converted model. Read the
+saved metadata with:
 
 ```js
 import fs from 'fs/promises';
