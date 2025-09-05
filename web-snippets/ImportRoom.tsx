@@ -1,14 +1,38 @@
 
-import React, { Suspense, useEffect, useState } from "react";
+import React, { Suspense, useEffect, useState, useRef } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
+import * as THREE from "three";
 
 function RoomModel({ url }: { url: string }) {
   const [scene, setScene] = useState<THREE.Group | null>(null);
+  const sceneRef = useRef<THREE.Group | null>(null);
   useEffect(() => {
     const loader = new GLTFLoader();
-    loader.load(url, (gltf) => setScene(gltf.scene));
+    loader.load(
+      url,
+      (gltf) => {
+        sceneRef.current = gltf.scene;
+        setScene(gltf.scene);
+      },
+      undefined,
+      (error) => console.error("Error loading model:", error)
+    );
+    return () => {
+      sceneRef.current?.traverse((object) => {
+        if (object instanceof THREE.Mesh) {
+          object.geometry.dispose();
+          const { material } = object;
+          if (Array.isArray(material)) {
+            material.forEach((mat) => mat.dispose());
+          } else {
+            material.dispose();
+          }
+        }
+      });
+      sceneRef.current = null;
+    };
   }, [url]);
   return scene ? <primitive object={scene} /> : null;
 }
