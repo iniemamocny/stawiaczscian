@@ -31,6 +31,22 @@ paths:
       responses:
         '200':
           description: Conversion completed.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - id
+                  - url
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                    description: Unique scan ID.
+                  url:
+                    type: string
+                    format: uri
+                    description: URL to download the GLB file.
         '400':
           description: Bad request.
         '401':
@@ -45,9 +61,11 @@ paths:
       parameters:
         - name: id
           in: path
+          description: Unique scan ID.
           required: true
           schema:
             type: string
+            format: uuid
       responses:
         '200':
           description: GLB file.
