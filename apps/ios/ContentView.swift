@@ -5,22 +5,38 @@ struct ContentView: View {
     @State private var lastExportURL: URL? = nil
     @State private var isUploading = false
     @State private var uploadResult: String? = nil
+    @State private var exportFinished = false
+    @State private var scannerId = UUID()
 
     var body: some View {
         NavigationView {
             VStack(spacing: 16) {
-                RoomPlanScannerView { url in lastExportURL = url }
-                    .frame(maxWidth: .infinity, maxHeight: 380)
-                    .background(Color.black.opacity(0.05))
-                    .clipShape(RoundedRectangle(cornerRadius: 24))
+                RoomPlanScannerView { url in
+                    lastExportURL = url
+                    exportFinished = true
+                }
+                .id(scannerId)
+                .frame(maxWidth: .infinity, maxHeight: 380)
+                .background(Color.black.opacity(0.05))
+                .clipShape(RoundedRectangle(cornerRadius: 24))
 
                 if let url = lastExportURL {
                     Text("Zapisano: \(url.lastPathComponent)").font(.footnote).foregroundColor(.secondary)
+                    if exportFinished {
+                        Text("Eksport zakończony").font(.footnote).foregroundColor(.green)
+                    }
                     Button { Task { await uploadFile(url: url) } } label: {
                         HStack { if isUploading { ProgressView() }; Text("Wyślij do MebloPlan") }
                     }
                     .buttonStyle(.borderedProminent)
                     .disabled(isUploading)
+                    if exportFinished {
+                        Button("Skanuj ponownie") {
+                            lastExportURL = nil
+                            exportFinished = false
+                            scannerId = UUID()
+                        }
+                    }
                 } else {
                     Text("Zeskanuj pokój i zapisz plik przed wysyłką.").font(.footnote).foregroundColor(.secondary)
                 }

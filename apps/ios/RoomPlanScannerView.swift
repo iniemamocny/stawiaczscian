@@ -24,16 +24,19 @@ struct RoomPlanScannerView: UIViewRepresentable {
         init(onExported: @escaping (URL) -> Void) { self.onExported = onExported }
         func captureView(_ view: RoomCaptureView, didPresent processedResult: CapturedRoom, error: Error?) {
             guard error == nil else { return }
-            export(room: processedResult)
+            export(room: processedResult, from: view)
         }
-        private func export(room: CapturedRoom) {
+        private func export(room: CapturedRoom, from view: RoomCaptureView) {
             do {
                 let fm = FileManager.default
                 let docs = try fm.url(for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
                 let url = docs.appendingPathComponent("scan_\(Int(Date().timeIntervalSince1970)).usdz")
                 try room.export(to: url)
+                view.captureSession.stop()
                 onExported(url)
-            } catch { print("Export error: \(error)") }
+            } catch {
+                print("Export error: \(error)")
+            }
         }
     }
 }
