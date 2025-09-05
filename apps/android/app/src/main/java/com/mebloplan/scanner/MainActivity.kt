@@ -14,6 +14,7 @@ import com.google.ar.core.PointCloud
 import com.google.ar.core.Session
 import com.google.ar.core.exceptions.*
 import java.io.File
+import java.util.Locale
 import kotlinx.coroutines.*
 
 class MainActivity : AppCompatActivity() {
@@ -135,7 +136,8 @@ class MainActivity : AppCompatActivity() {
             pw.println("end_header")
             var i = 0
             while (i < pts.size) {
-                pw.println("${pts[i]} ${pts[i+1]} ${pts[i+2]}")
+                // Locale.US ensures '.' decimal separator regardless of device settings
+                pw.println(String.format(Locale.US, "%f %f %f", pts[i], pts[i+1], pts[i+2]))
                 i += 3
             }
         }
