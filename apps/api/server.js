@@ -30,7 +30,7 @@ app.post('/api/scans', upload.single('file'), async (req, res) => {
     const id = randomUUID();
     const inputPath = file.path;
     const outDir = path.join('storage', id);
-    fs.mkdirSync(outDir, { recursive: true });
+    await fs.promises.mkdir(outDir, { recursive: true });
     const glbPath = path.join(outDir, 'room.glb');
 
     const blender = process.env.BLENDER_PATH || 'blender';
@@ -40,9 +40,17 @@ app.post('/api/scans', upload.single('file'), async (req, res) => {
 
     const p = spawn(blender, args, { stdio: 'inherit' });
     p.on('error', e => { console.error('Spawn error:', e); try { res.status(500).json({ error: 'spawn failed', detail: String(e) }); } catch {} });
-    p.on('exit', code => {
-      if (code === 0 && fs.existsSync(glbPath)) res.json({ id, url: `/api/scans/${id}/room.glb` });
-      else res.status(500).json({ error: 'conversion failed', code });
+    p.on('exit', async code => {
+      if (code === 0) {
+        try {
+          await fs.promises.access(glbPath);
+          res.json({ id, url: `/api/scans/${id}/room.glb` });
+        } catch {
+          res.status(500).json({ error: 'conversion failed', code });
+        }
+      } else {
+        res.status(500).json({ error: 'conversion failed', code });
+      }
     });
   } catch (e) {
     console.error(e);
@@ -50,12 +58,15 @@ app.post('/api/scans', upload.single('file'), async (req, res) => {
   }
 });
 
-app.get('/api/scans/:id/room.glb', (req, res) => {
-  const p = path.join('storage', req.params.id, 'room.glb');
-  if (fs.existsSync(p)) {
+app.get('/api/scans/:id/room.glb', async (req, res) => {
+  try {
+    const p = path.join('storage', req.params.id, 'room.glb');
+    await fs.promises.access(p);
     res.setHeader('Content-Type','model/gltf-binary');
     fs.createReadStream(p).pipe(res);
-  } else res.status(404).json({ error: 'not found' });
+  } catch {
+    res.status(404).json({ error: 'not found' });
+  }
 });
 
 const port = process.env.PORT || 4000;
