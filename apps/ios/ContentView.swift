@@ -1,5 +1,6 @@
 
 import SwiftUI
+import Foundation
 
 struct ContentView: View {
     @State private var lastExportURL: URL? = nil
@@ -63,25 +64,39 @@ struct ContentView: View {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
             request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
 
-            var data = Data()
+            let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+            FileManager.default.createFile(atPath: tempURL.path, contents: nil)
+            let handle = try FileHandle(forWritingTo: tempURL)
+            defer {
+                try? handle.close()
+                try? FileManager.default.removeItem(at: tempURL)
+            }
             // meta
             let meta = ["platform": "ios", "format": url.pathExtension.lowercased()]
             let metaJSON = try JSONSerialization.data(withJSONObject: meta)
-            data.append("--\(boundary)\r\n".data(using: .utf8)!)
-            data.append("Content-Disposition: form-data; name=\"meta\"\r\n".data(using: .utf8)!)
-            data.append("Content-Type: application/json\r\n\r\n".data(using: .utf8)!)
-            data.append(metaJSON)
-            data.append("\r\n".data(using: .utf8)!)
+            try handle.write(contentsOf: "--\(boundary)\r\n".data(using: .utf8)!)
+            try handle.write(contentsOf: "Content-Disposition: form-data; name=\"meta\"\r\n".data(using: .utf8)!)
+            try handle.write(contentsOf: "Content-Type: application/json\r\n\r\n".data(using: .utf8)!)
+            try handle.write(contentsOf: metaJSON)
+            try handle.write(contentsOf: "\r\n".data(using: .utf8)!)
             // file
-            let fileData = try Data(contentsOf: url)
-            data.append("--\(boundary)\r\n".data(using: .utf8)!)
-            data.append("Content-Disposition: form-data; name=\"file\"; filename=\"\(url.lastPathComponent)\"\r\n".data(using: .utf8)!)
-            data.append("Content-Type: application/octet-stream\r\n\r\n".data(using: .utf8)!)
-            data.append(fileData)
-            data.append("\r\n".data(using: .utf8)!)
-            data.append("--\(boundary)--\r\n".data(using: .utf8)!)
+            try handle.write(contentsOf: "--\(boundary)\r\n".data(using: .utf8)!)
+            try handle.write(contentsOf: "Content-Disposition: form-data; name=\"file\"; filename=\"\(url.lastPathComponent)\"\r\n".data(using: .utf8)!)
+            try handle.write(contentsOf: "Content-Type: application/octet-stream\r\n\r\n".data(using: .utf8)!)
+            let inputHandle = try FileHandle(forReadingFrom: url)
+            while true {
+                let chunk = try inputHandle.read(upToCount: 64 * 1024)
+                if let chunk = chunk, !chunk.isEmpty {
+                    try handle.write(contentsOf: chunk)
+                } else {
+                    break
+                }
+            }
+            try inputHandle.close()
+            try handle.write(contentsOf: "\r\n".data(using: .utf8)!)
+            try handle.write(contentsOf: "--\(boundary)--\r\n".data(using: .utf8)!)
 
-            let (respData, resp) = try await URLSession.shared.upload(for: request, from: data)
+            let (respData, resp) = try await URLSession.shared.upload(for: request, fromFile: tempURL)
             if let http = resp as? HTTPURLResponse, http.statusCode == 200 {
                 uploadResult = String(data: respData, encoding: .utf8) ?? "OK"
             } else {
