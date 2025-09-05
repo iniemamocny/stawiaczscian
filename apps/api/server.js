@@ -32,7 +32,18 @@ async function initDirs() {
 
 const app = express();
 await initDirs();
-app.use(rateLimit({ windowMs: 60 * 1000, max: 30 }));
+const RETRY_AFTER_SECONDS = 60;
+const rateLimitWindowMs = RETRY_AFTER_SECONDS * 1000;
+app.use(
+  rateLimit({
+    windowMs: rateLimitWindowMs,
+    max: 30,
+    handler: (req, res) => {
+      res.setHeader('Retry-After', String(RETRY_AFTER_SECONDS));
+      res.status(429).json({ error: 'too many requests' });
+    },
+  })
+);
 app.use(helmet());
 app.use(cors({ origin: process.env.ALLOWED_ORIGINS?.split(',') }));
 const upload = multer({
@@ -106,6 +117,7 @@ app.post('/api/scans', upload.single('file'), async (req, res) => {
     if (!file) return res.status(400).json({ error: 'no file' });
     if (queue.size + queue.pending >= queueLimit) {
       await fs.promises.unlink(file.path).catch(() => {});
+      res.setHeader('Retry-After', String(RETRY_AFTER_SECONDS));
       return res.status(429).json({ error: 'too many requests' });
     }
     const ext = path.extname(file.originalname).toLowerCase();
