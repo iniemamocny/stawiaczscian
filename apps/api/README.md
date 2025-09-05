@@ -31,6 +31,10 @@ Uploads are accepted only in the following file formats:
 
 Files with other extensions are rejected.
 
+## Cleanup
+
+Uploaded source files are deleted after conversion.
+
 ## Metadata
 
 Send additional metadata in a `meta` field when uploading scans. The value
