@@ -10,7 +10,7 @@ import 'dotenv/config';
 import PQueue from 'p-queue';
 
 const app = express();
-app.use(cors());
+app.use(cors({ origin: process.env.ALLOWED_ORIGINS?.split(',') }));
 const upload = multer({
   dest: 'uploads/',
   limits: {
