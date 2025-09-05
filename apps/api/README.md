@@ -89,3 +89,9 @@ Both `POST http://localhost:4000/api/scans` and
 `GET http://localhost:4000/api/scans/{id}/room.glb` may also return:
 
 - `404` – Not found
+
+## Graceful shutdown
+
+Terminate the process with `SIGINT` or `SIGTERM` (for example by pressing
+`Ctrl+C`). The server clears the conversion queue and runs cleanup tasks
+before exiting, ensuring temporary uploads and old files are removed.

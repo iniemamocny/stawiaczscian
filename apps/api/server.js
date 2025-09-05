@@ -241,3 +241,15 @@ app.use((err, req, res, next) => {
 
 const port = process.env.PORT || 4000;
 app.listen(port, () => console.log('API on http://localhost:' + port));
+
+const shutdown = async () => {
+  queue.clear();
+  try {
+    await Promise.all([cleanupUploads(), cleanOldFiles()]);
+  } finally {
+    process.exit(0);
+  }
+};
+
+process.on('SIGINT', shutdown);
+process.on('SIGTERM', shutdown);
