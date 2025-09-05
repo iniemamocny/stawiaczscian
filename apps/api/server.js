@@ -11,6 +11,7 @@ import helmet from 'helmet';
 import 'dotenv/config';
 import PQueue from 'p-queue';
 import FileType from 'file-type';
+import rateLimit from 'express-rate-limit';
 
 function parsePositiveInt(value, fallback) {
   const parsed = parseInt(value, 10);
@@ -22,6 +23,7 @@ function parsePositiveInt(value, fallback) {
 }
 
 const app = express();
+app.use(rateLimit({ windowMs: 60 * 1000, max: 30 }));
 app.use(helmet());
 app.use(cors({ origin: process.env.ALLOWED_ORIGINS?.split(',') }));
 const upload = multer({
