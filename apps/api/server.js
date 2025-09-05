@@ -7,6 +7,7 @@ import path from 'path';
 import fs from 'fs';
 import { pipeline } from 'stream/promises';
 import cors from 'cors';
+import helmet from 'helmet';
 import 'dotenv/config';
 import PQueue from 'p-queue';
 import FileType from 'file-type';
@@ -21,6 +22,7 @@ function parsePositiveInt(value, fallback) {
 }
 
 const app = express();
+app.use(helmet());
 app.use(cors({ origin: process.env.ALLOWED_ORIGINS?.split(',') }));
 const upload = multer({
   dest: 'uploads/',
