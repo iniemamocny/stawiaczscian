@@ -134,7 +134,11 @@ class MainActivity : AppCompatActivity() {
                     url = "http://10.0.2.2:4000/api/scans",
                     token = "REPLACE_WITH_API_TOKEN",
                     file = f,
-                    meta = mapOf("platform" to "android", "format" to "ply")
+                    meta = mapOf(
+                        "platform" to "android",
+                        "format" to "ply",
+                        "author" to "Jan Kowalski"
+                    )
                 )
                 withContext(Dispatchers.Main) { info.text = resp }
             } catch (e: Exception) {

@@ -2,6 +2,7 @@ package com.mebloplan.scanner
 
 import java.io.File
 import java.io.IOException
+import java.net.URLEncoder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
@@ -14,7 +15,7 @@ object Uploader {
     private val client = OkHttpClient()
 
     suspend fun upload(url: String, token: String, file: File, meta: Map<String, String>): String {
-        val metaString = meta.entries.joinToString("&") { "${it.key}=${it.value}" }
+        val metaString = meta.entries.joinToString("&") { "${it.key}=${URLEncoder.encode(it.value, "UTF-8")}" }
         val body = MultipartBody.Builder()
             .setType(MultipartBody.FORM)
             .addFormDataPart("meta", metaString)
