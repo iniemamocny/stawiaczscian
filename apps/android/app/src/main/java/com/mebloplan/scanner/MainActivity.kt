@@ -2,8 +2,10 @@
 package com.mebloplan.scanner
 
 import android.os.Bundle
+import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import android.widget.Button
+import android.widget.ProgressBar
 import android.widget.TextView
 import com.google.ar.core.Config
 import com.google.ar.core.Frame
@@ -11,6 +13,7 @@ import com.google.ar.core.PointCloud
 import com.google.ar.core.Session
 import com.google.ar.core.exceptions.*
 import java.io.File
+import kotlinx.coroutines.*
 
 class MainActivity : AppCompatActivity() {
 
@@ -18,8 +21,10 @@ class MainActivity : AppCompatActivity() {
     private lateinit var info: TextView
     private lateinit var btnScan: Button
     private lateinit var btnUpload: Button
+    private lateinit var progressBar: ProgressBar
 
     private var lastPlyFile: File? = null
+    private val scope = CoroutineScope(Dispatchers.Default)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -27,6 +32,7 @@ class MainActivity : AppCompatActivity() {
         info = findViewById(R.id.infoText)
         btnScan = findViewById(R.id.btnScan)
         btnUpload = findViewById(R.id.btnUpload)
+        progressBar = findViewById(R.id.progressBar)
 
         btnScan.setOnClickListener { startScan() }
         btnUpload.setOnClickListener { uploadLast() }
@@ -55,35 +61,52 @@ class MainActivity : AppCompatActivity() {
 
     private fun startScan() {
         if (!ensureSession()) return
-        val s = session ?: return
-        try {
-            s.resume()
-            // Zbierz kilka klatek chmury punktów i zapisz do PLY
-            var frames = 0
-            val collected = mutableListOf<Float>()
-            while (frames < 60) { // ~2 sekundy
-                val frame: Frame = s.update()
-                val pc: PointCloud = frame.acquirePointCloud()
-                val buf = pc.points // FloatBuffer XYZC
-                buf.rewind()
-                while (buf.hasRemaining()) {
-                    val x = buf.get()
-                    val y = buf.get()
-                    val z = buf.get()
-                    buf.get() // confidence (unused)
-                    collected.add(x); collected.add(y); collected.add(z)
+        btnScan.isEnabled = false
+        progressBar.visibility = View.VISIBLE
+        scope.launch {
+            val s = session ?: return@launch
+            try {
+                s.resume()
+                // Zbierz kilka klatek chmury punktów i zapisz do PLY
+                var frames = 0
+                val collected = mutableListOf<Float>()
+                while (frames < 60) { // ~2 sekundy
+                    val frame: Frame = s.update()
+                    val pc: PointCloud = frame.acquirePointCloud()
+                    val buf = pc.points // FloatBuffer XYZC
+                    buf.rewind()
+                    while (buf.hasRemaining()) {
+                        val x = buf.get()
+                        val y = buf.get()
+                        val z = buf.get()
+                        buf.get() // confidence (unused)
+                        collected.add(x); collected.add(y); collected.add(z)
+                    }
+                    pc.release()
+                    frames++
                 }
-                pc.release()
-                frames++
+                s.pause()
+                val out = File(getExternalFilesDir(null), "scan_${System.currentTimeMillis()}.ply")
+                writePly(out, collected)
+                withContext(Dispatchers.Main) {
+                    info.text = "Zapisano: ${out.name} (~${collected.size/3} pkt)"
+                    lastPlyFile = out
+                    btnScan.isEnabled = true
+                    progressBar.visibility = View.GONE
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    info.text = "Błąd skanowania: ${e.message}"
+                    btnScan.isEnabled = true
+                    progressBar.visibility = View.GONE
+                }
             }
-            s.pause()
-            val out = File(getExternalFilesDir(null), "scan_${System.currentTimeMillis()}.ply")
-            writePly(out, collected)
-            info.text = "Zapisano: ${out.name} (~${collected.size/3} pkt)"
-            lastPlyFile = out
-        } catch (e: Exception) {
-            info.text = "Błąd skanowania: ${e.message}"
         }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        scope.cancel()
     }
 
     private fun writePly(file: File, pts: List<Float>) {
