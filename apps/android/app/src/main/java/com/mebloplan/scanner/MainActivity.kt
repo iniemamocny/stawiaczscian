@@ -156,7 +156,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun writePly(file: File, pts: List<Float>) {
-        file.printWriter().use { pw ->
+        // Always use UTF-8 to keep encoding stable across locales
+        file.printWriter(Charsets.UTF_8).use { pw ->
             pw.println("ply")
             pw.println("format ascii 1.0")
             pw.println("element vertex ${pts.size/3}")
