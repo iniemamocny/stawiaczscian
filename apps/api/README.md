@@ -11,6 +11,8 @@ The API can be configured with the following environment variables:
   `storage`.
 - `STORAGE_MAX_AGE_MS` – files older than this many milliseconds are removed
   by a periodic cleanup job. Defaults to `86400000` (24 hours).
+- `MAX_UPLOAD_BYTES` – maximum allowed upload size in bytes. Defaults to
+  `52428800` (50 MB).
 
 ## Metadata
 

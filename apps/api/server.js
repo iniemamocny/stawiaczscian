@@ -10,7 +10,12 @@ import 'dotenv/config';
 
 const app = express();
 app.use(cors());
-const upload = multer({ dest: 'uploads/' });
+const upload = multer({
+  dest: 'uploads/',
+  limits: {
+    fileSize: parseInt(process.env.MAX_UPLOAD_BYTES || '52428800', 10),
+  },
+});
 
 const storageDir = process.env.STORAGE_DIR || 'storage';
 const maxFileAgeMs = parseInt(
@@ -123,6 +128,13 @@ app.get('/api/scans/:id/room.glb', async (req, res) => {
   } catch {
     res.status(404).json({ error: 'not found' });
   }
+});
+
+app.use((err, req, res, next) => {
+  if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
+    return res.status(413).json({ error: 'file too large' });
+  }
+  next(err);
 });
 
 const port = process.env.PORT || 4000;
