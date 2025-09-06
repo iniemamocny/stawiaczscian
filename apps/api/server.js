@@ -216,7 +216,15 @@ app.post('/api/scans', upload.single('file'), async (req, res) => {
             if (code === 0) {
               try {
                 await fs.promises.access(glbPath);
+                const etag = await new Promise((resolveHash, rejectHash) => {
+                  const hash = createHash('sha1');
+                  const s = fs.createReadStream(glbPath);
+                  s.on('error', rejectHash);
+                  s.on('data', chunk => hash.update(chunk));
+                  s.on('end', () => resolveHash('"' + hash.digest('hex') + '"'));
+                });
                 info.status = 'done';
+                info.etag = etag;
                 resolve();
               } catch {
                 reject(new Error('conversion failed'));
@@ -318,13 +326,26 @@ app.get('/api/scans/:id/room.glb', async (req, res) => {
 
     await fs.promises.access(filePath);
 
-    const etag = await new Promise((resolve, reject) => {
-      const hash = createHash('sha1');
-      const s = fs.createReadStream(filePath);
-      s.on('error', reject);
-      s.on('data', chunk => hash.update(chunk));
-      s.on('end', () => resolve('"' + hash.digest('hex') + '"'));
-    });
+    const infoPath = path.resolve(baseDir, id, 'info.json');
+    let info = {};
+    try {
+      info = JSON.parse(await fs.promises.readFile(infoPath, 'utf8'));
+    } catch {}
+    let etag = info.etag;
+    if (!etag) {
+      etag = await new Promise((resolve, reject) => {
+        const hash = createHash('sha1');
+        const s = fs.createReadStream(filePath);
+        s.on('error', reject);
+        s.on('data', chunk => hash.update(chunk));
+        s.on('end', () => resolve('"' + hash.digest('hex') + '"'));
+      });
+      info.etag = etag;
+      if (!info.status) info.status = 'done';
+      await fs.promises
+        .writeFile(infoPath, JSON.stringify(info, null, 2))
+        .catch(() => {});
+    }
 
     res.setHeader('ETag', etag);
 

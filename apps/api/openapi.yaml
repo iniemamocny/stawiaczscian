@@ -123,7 +123,7 @@ paths:
                 type: string
               example: public, max-age=86400, immutable
             ETag:
-              description: Entity tag for the model.
+              description: Entity tag for the model. Constant for a given file.
               schema:
                 type: string
           content:
@@ -135,7 +135,7 @@ paths:
           description: Not modified.
           headers:
             ETag:
-              description: Entity tag for the model.
+              description: Entity tag for the model. Constant for a given file.
               schema:
                 type: string
         '400':
