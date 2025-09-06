@@ -245,6 +245,7 @@ app.get('/api/scans/:id/room.glb', async (req, res) => {
 
     await fs.promises.access(filePath);
     res.setHeader('Content-Type', 'model/gltf-binary');
+    res.setHeader('Cache-Control', 'public, max-age=86400, immutable');
 
     const stream = fs.createReadStream(filePath);
     stream.on('error', err => {
