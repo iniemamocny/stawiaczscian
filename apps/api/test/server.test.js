@@ -125,6 +125,27 @@ describe('API server', () => {
     );
   });
 
+  it('lists scan ids with pagination', async () => {
+    const extraId = randomUUID();
+    await fs.mkdir(path.join(process.env.STORAGE_DIR, extraId));
+
+    const res1 = await request(app)
+      .get('/api/scans?limit=1&page=1')
+      .set('Authorization', 'Bearer testtoken');
+    const res2 = await request(app)
+      .get('/api/scans?limit=1&page=2')
+      .set('Authorization', 'Bearer testtoken');
+
+    assert.equal(res1.status, 200);
+    assert.equal(res2.status, 200);
+    assert.equal(res1.body.length, 1);
+    assert.equal(res2.body.length, 1);
+
+    const all = new Set([...res1.body, ...res2.body]);
+    assert(all.has(uploadedId));
+    assert(all.has(extraId));
+  });
+
   it('deletes scan directory', async () => {
     await request(app)
       .delete(`/api/scans/${uploadedId}`)
