@@ -32,6 +32,10 @@ Wartości te zostaną udostępnione w `BuildConfig` jako `API_URL` oraz `API_TOK
 ### iOS
 
 W pliku `apps/ios/Info.plist` ustaw klucze `API_URL` i `API_TOKEN`.
+Adres w `API_URL` musi używać protokołu `https://`, ponieważ aplikacja
+wymaga połączeń szyfrowanych TLS. Jeżeli w środowisku deweloperskim
+korzystasz z serwera HTTP (np. `localhost`), dodaj odpowiedni wpis do
+`NSExceptionDomains`.
 
 Urządzenie musi obsługiwać RoomPlan (np. iPhone lub iPad z czujnikiem LiDAR).
 
