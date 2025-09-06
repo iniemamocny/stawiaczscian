@@ -34,14 +34,23 @@ async function initDirs() {
 
 async function verifyBlender() {
   const blender = process.env.BLENDER_PATH || 'blender';
-  await new Promise((resolve, reject) => {
-    const p = spawn(blender, ['--version'], { stdio: 'ignore' });
-    p.on('error', err => reject(err));
-    p.on('exit', code => {
-      if (code === 0) resolve();
-      else reject(new Error('Blender exited with code ' + code));
-    });
-  });
+  let p;
+  await Promise.race([
+    new Promise((resolve, reject) => {
+      p = spawn(blender, ['--version'], { stdio: 'ignore' });
+      p.on('error', err => reject(err));
+      p.on('exit', code => {
+        if (code === 0) resolve();
+        else reject(new Error('Blender exited with code ' + code));
+      });
+    }),
+    new Promise((_, reject) =>
+      setTimeout(() => {
+        p?.kill();
+        reject(new Error('Blender verification timed out'));
+      }, 10000)
+    ),
+  ]);
 }
 
 const app = express();

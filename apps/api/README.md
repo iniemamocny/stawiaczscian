@@ -29,7 +29,7 @@ The API can be configured with the following environment variables:
   limit is reached, new requests are rejected with `429`. Defaults to `10`.
 - `ALLOWED_ORIGINS` – comma-separated list of allowed CORS origins (URLs).
 - `BLENDER_PATH` – path to the Blender executable. Defaults to `blender`. The
-  server verifies Blender is available on startup.
+  server verifies Blender is available on startup with a 10-second timeout.
 - `LOG_FORMAT` – format for HTTP request logs. Defaults to `combined`.
 
 The upload and storage directories are created automatically if they do not exist.
