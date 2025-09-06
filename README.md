@@ -15,6 +15,10 @@
 API korzysta z biblioteki [Helmet](https://helmetjs.github.io/),
 która ustawia standardowe nagłówki bezpieczeństwa chroniące aplikację.
 
+## Kompresja
+
+Odpowiedzi API są kompresowane przy użyciu biblioteki [compression](https://www.npmjs.com/package/compression), co zmniejsza ilość przesyłanych danych.
+
 ## Cache
 
 Pobrane modele GLB można cache'ować przez 24 godziny dzięki nagłówkowi
