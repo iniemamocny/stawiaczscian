@@ -6,7 +6,7 @@ on:
   pull_request:
     branches: ["main"]
 
-jobs:  
+jobs:
   node:
     runs-on: ubuntu-latest
     defaults:
@@ -21,3 +21,9 @@ jobs:
           cache-dependency-path: apps/api/package-lock.json
       - run: npm ci
       - run: npm test
+  ios:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: brew install swift-format
+      - run: swift format lint --configuration .swift-format --strict --recursive .
