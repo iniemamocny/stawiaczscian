@@ -235,6 +235,32 @@ app.post('/api/scans', upload.single('file'), async (req, res) => {
   }
 });
 
+app.get('/api/scans/:id/info', async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!/^[0-9a-f-]{36}$/.test(id)) {
+      return res.status(400).json({ error: 'invalid id' });
+    }
+
+    const baseDir = path.resolve(storageDir);
+    const filePath = path.resolve(baseDir, id, 'info.json');
+    if (!filePath.startsWith(baseDir + path.sep)) {
+      return res.status(403).json({ error: 'forbidden' });
+    }
+
+    const data = await fs.promises.readFile(filePath, 'utf8');
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Cache-Control', 'public, max-age=86400, immutable');
+    res.send(data);
+  } catch (e) {
+    if (e.code === 'ENOENT') {
+      res.status(404).json({ error: 'not found' });
+    } else {
+      res.status(500).json({ error: 'server error' });
+    }
+  }
+});
+
 app.get('/api/scans/:id/room.glb', async (req, res) => {
   try {
     const { id } = req.params;

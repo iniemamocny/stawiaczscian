@@ -58,6 +58,42 @@ paths:
           description: Too many requests. Conversion queue is full.
         '500':
           description: Server error.
+  /api/scans/{id}/info:
+    get:
+      summary: Retrieve scan metadata by scan id.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          description: Unique scan ID.
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Metadata saved during upload.
+          headers:
+            Cache-Control:
+              description: Cache policy for the metadata.
+              schema:
+                type: string
+              example: public, max-age=86400, immutable
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          description: Bad request.
+        '401':
+          description: Unauthorized.
+        '404':
+          description: Not found.
+        '429':
+          description: Too many requests.
+        '500':
+          description: Server error.
   /api/scans/{id}/room.glb:
     get:
       summary: Download converted GLB model by scan id.
