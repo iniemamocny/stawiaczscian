@@ -101,6 +101,15 @@ The response JSON includes:
 - `url` – download link for the GLB file when `status` is `done`
 
 For real-time updates without polling, open a WebSocket connection to `/ws`.
+Send the same `Authorization: Bearer $API_TOKEN` header during the handshake:
+
+```js
+import WebSocket from 'ws';
+const ws = new WebSocket('ws://localhost:4000/ws', {
+  headers: { Authorization: `Bearer ${process.env.API_TOKEN}` },
+});
+```
+
 The server sends JSON messages of the form `{ "id": "<scan-id>", "progress": <number> }`
 whenever conversion progress changes.
 
