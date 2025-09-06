@@ -5,6 +5,7 @@ import { spawn } from 'child_process';
 import { randomUUID, createHash } from 'crypto';
 import path from 'path';
 import fs from 'fs';
+import { fileURLToPath } from 'url';
 import { pipeline } from 'stream/promises';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -273,7 +274,7 @@ app.post('/api/scans', upload.single('file'), async (req, res) => {
       try {
         const blender = process.env.BLENDER_PATH || 'blender';
         const script = path.join(
-          path.dirname(new URL(import.meta.url).pathname),
+          path.dirname(fileURLToPath(import.meta.url)),
           'convert_blender.py'
         );
         const args = ['-b', '-P', script, '--', path.resolve(inputPath), path.resolve(glbPath)];
