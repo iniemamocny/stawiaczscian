@@ -194,8 +194,11 @@ app.post('/api/scans', upload.single('file'), async (req, res) => {
     await fs.promises.rename(file.path, inputPath);
 
     const infoPath = path.join(outDir, 'info.json');
-    const info = { status: 'pending' };
-    if (meta) info.meta = meta;
+    const info = { status: 'pending', filename: 'room.glb' };
+    if (meta) {
+      if (meta.filename) info.filename = String(meta.filename);
+      info.meta = meta;
+    }
     await fs.promises.writeFile(infoPath, JSON.stringify(info, null, 2));
 
     queue.add(async () => {
@@ -356,6 +359,8 @@ app.get('/api/scans/:id/room.glb', async (req, res) => {
 
     res.setHeader('Content-Type', 'model/gltf-binary');
     res.setHeader('Cache-Control', 'public, max-age=86400, immutable');
+    const filename = info.filename || 'room.glb';
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
 
     const stream = fs.createReadStream(filePath);
     stream.on('error', err => {
