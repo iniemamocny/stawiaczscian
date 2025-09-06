@@ -2,30 +2,34 @@
 package com.mebloplan.scanner
 
 import android.Manifest
-import android.content.pm.PackageManager
 import android.content.Context
+import android.content.pm.PackageManager
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.os.Bundle
+import android.util.Log
 import android.view.View
-import androidx.appcompat.app.AppCompatActivity
 import android.widget.Button
 import android.widget.ProgressBar
 import android.widget.TextView
-import android.util.Log
+import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.google.ar.core.Config
 import com.google.ar.core.Frame
 import com.google.ar.core.PointCloud
 import com.google.ar.core.Session
-import com.google.ar.core.exceptions.*
+import com.google.ar.core.exceptions.UnavailableArcoreNotInstalledException
+import com.google.ar.core.exceptions.UnavailableDeviceNotCompatibleException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.Locale
-import kotlinx.coroutines.*
 
 class MainActivity : AppCompatActivity() {
-
     private var session: Session? = null
     private lateinit var info: TextView
     private lateinit var btnScan: Button
@@ -36,7 +40,7 @@ class MainActivity : AppCompatActivity() {
     private var lastPlyFile: File? = null
     private val scope = CoroutineScope(Dispatchers.Default)
     private var job: Job? = null
-    private val CAMERA_PERMISSION_CODE = 1001
+    private val cameraPermissionCode = 1001
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -88,11 +92,12 @@ class MainActivity : AppCompatActivity() {
 
     private fun startScan() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
-            != PackageManager.PERMISSION_GRANTED) {
+            != PackageManager.PERMISSION_GRANTED
+        ) {
             ActivityCompat.requestPermissions(
                 this,
                 arrayOf(Manifest.permission.CAMERA),
-                CAMERA_PERMISSION_CODE
+                cameraPermissionCode,
             )
             return
         }
@@ -101,56 +106,59 @@ class MainActivity : AppCompatActivity() {
         progressBar.progress = 0
         progressBar.visibility = View.VISIBLE
         btnCancel.visibility = View.VISIBLE
-        job = scope.launch {
-            val s = session ?: return@launch
-            try {
-                s.resume()
-                // Zbierz kilka klatek chmury punktów i zapisz do PLY
-                var frames = 0
-                val collected = mutableListOf<Float>()
-                while (frames < 60) { // ~2 sekundy
-                    val frame: Frame = s.update()
-                    val pc: PointCloud = frame.acquirePointCloud()
-                    val buf = pc.points // FloatBuffer XYZC
-                    buf.rewind()
-                    while (buf.hasRemaining()) {
-                        val x = buf.get()
-                        val y = buf.get()
-                        val z = buf.get()
-                        buf.get() // confidence (unused)
-                        collected.add(x); collected.add(y); collected.add(z)
+        job =
+            scope.launch {
+                val s = session ?: return@launch
+                try {
+                    s.resume()
+                    // Zbierz kilka klatek chmury punktów i zapisz do PLY
+                    var frames = 0
+                    val collected = mutableListOf<Float>()
+                    while (frames < 60) { // ~2 sekundy
+                        val frame: Frame = s.update()
+                        val pc: PointCloud = frame.acquirePointCloud()
+                        val buf = pc.points // FloatBuffer XYZC
+                        buf.rewind()
+                        while (buf.hasRemaining()) {
+                            val x = buf.get()
+                            val y = buf.get()
+                            val z = buf.get()
+                            buf.get() // confidence (unused)
+                            collected.add(x)
+                            collected.add(y)
+                            collected.add(z)
+                        }
+                        pc.release()
+                        withContext(Dispatchers.Main) {
+                            frames++
+                            progressBar.progress = frames
+                        }
                     }
-                    pc.release()
+                    s.pause()
+                    val out = File(getExternalFilesDir(null), "scan_${System.currentTimeMillis()}.ply")
+                    writePly(out, collected)
                     withContext(Dispatchers.Main) {
-                        frames++
-                        progressBar.progress = frames
+                        info.text = "Zapisano: ${out.name} (~${collected.size / 3} pkt)"
+                        lastPlyFile = out
+                        btnScan.isEnabled = true
+                        progressBar.visibility = View.GONE
+                        btnCancel.visibility = View.GONE
+                        job = null
                     }
-                }
-                s.pause()
-                val out = File(getExternalFilesDir(null), "scan_${System.currentTimeMillis()}.ply")
-                writePly(out, collected)
-                withContext(Dispatchers.Main) {
-                    info.text = "Zapisano: ${out.name} (~${collected.size/3} pkt)"
-                    lastPlyFile = out
-                    btnScan.isEnabled = true
-                    progressBar.visibility = View.GONE
-                    btnCancel.visibility = View.GONE
-                    job = null
-                }
-            } catch (e: Exception) {
-                withContext(Dispatchers.Main) {
-                    if (e is CancellationException) {
-                        info.text = "Gotowy do skanowania"
-                    } else {
-                        info.text = "Błąd skanowania: ${e.message}"
+                } catch (e: Exception) {
+                    withContext(Dispatchers.Main) {
+                        if (e is CancellationException) {
+                            info.text = "Gotowy do skanowania"
+                        } else {
+                            info.text = "Błąd skanowania: ${e.message}"
+                        }
+                        btnScan.isEnabled = true
+                        progressBar.visibility = View.GONE
+                        btnCancel.visibility = View.GONE
+                        job = null
                     }
-                    btnScan.isEnabled = true
-                    progressBar.visibility = View.GONE
-                    btnCancel.visibility = View.GONE
-                    job = null
                 }
             }
-        }
     }
 
     override fun onDestroy() {
@@ -163,10 +171,10 @@ class MainActivity : AppCompatActivity() {
     override fun onRequestPermissionsResult(
         requestCode: Int,
         permissions: Array<out String>,
-        grantResults: IntArray
+        grantResults: IntArray,
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == CAMERA_PERMISSION_CODE) {
+        if (requestCode == cameraPermissionCode) {
             if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 startScan()
             } else {
@@ -176,12 +184,15 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun writePly(file: File, pts: List<Float>) {
+    private fun writePly(
+        file: File,
+        pts: List<Float>,
+    ) {
         // Always use UTF-8 to keep encoding stable across locales
         file.printWriter(Charsets.UTF_8).use { pw ->
             pw.println("ply")
             pw.println("format ascii 1.0")
-            pw.println("element vertex ${pts.size/3}")
+            pw.println("element vertex ${pts.size / 3}")
             pw.println("property float x")
             pw.println("property float y")
             pw.println("property float z")
@@ -189,18 +200,23 @@ class MainActivity : AppCompatActivity() {
             var i = 0
             while (i < pts.size) {
                 // Locale.US ensures '.' decimal separator regardless of device settings
-                pw.println(String.format(Locale.US, "%f %f %f", pts[i], pts[i+1], pts[i+2]))
+                pw.println(String.format(Locale.US, "%f %f %f", pts[i], pts[i + 1], pts[i + 2]))
                 i += 3
             }
         }
     }
 
     private fun uploadLast() {
-        val f = lastPlyFile ?: run { info.text = "Brak pliku do wysłania"; return }
+        val f =
+            lastPlyFile ?: run {
+                info.text = "Brak pliku do wysłania"
+                return
+            }
 
         val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-        val hasInternet = cm.getNetworkCapabilities(cm.activeNetwork)
-            ?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
+        val hasInternet =
+            cm.getNetworkCapabilities(cm.activeNetwork)
+                ?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
         if (!hasInternet) {
             info.text = "Brak połączenia z internetem"
             return
@@ -208,16 +224,18 @@ class MainActivity : AppCompatActivity() {
 
         scope.launch {
             try {
-                val resp = Uploader.upload(
-                    url = BuildConfig.API_URL,
-                    token = BuildConfig.API_TOKEN,
-                    file = f,
-                    meta = mapOf(
-                        "platform" to "android",
-                        "format" to "ply",
-                        "author" to "Jan Kowalski"
+                val resp =
+                    Uploader.upload(
+                        url = BuildConfig.API_URL,
+                        token = BuildConfig.API_TOKEN,
+                        file = f,
+                        meta =
+                            mapOf(
+                                "platform" to "android",
+                                "format" to "ply",
+                                "author" to "Jan Kowalski",
+                            ),
                     )
-                )
                 withContext(Dispatchers.Main) { info.text = resp }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) { info.text = "Błąd wysyłki: ${e.message}" }

@@ -1,7 +1,11 @@
 
 import java.util.Properties
 
-plugins { id("com.android.application"); id("org.jetbrains.kotlin.android") }
+plugins {
+    id("com.android.application")
+    id("org.jetbrains.kotlin.android")
+    id("org.jlleitschuh.gradle.ktlint")
+}
 
 val localProps = Properties()
 val localPropsFile = rootProject.file("local.properties")
@@ -12,6 +16,9 @@ if (localPropsFile.exists()) {
 android {
     namespace = "com.mebloplan.scanner"
     compileSdk = 35
+    buildFeatures {
+        buildConfig = true
+    }
     defaultConfig {
         applicationId = "com.mebloplan.scanner"
         minSdk = 26

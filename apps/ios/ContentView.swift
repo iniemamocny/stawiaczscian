@@ -11,6 +11,7 @@ struct ContentView: View {
   @State private var scannerId = UUID()
   @State private var uploadProgress: Double = 0
   @State private var currentTask: URLSessionUploadTask? = nil
+  @State private var urlSessionConfiguration: URLSessionConfiguration? = nil
 
   var body: some View {
     NavigationView {
