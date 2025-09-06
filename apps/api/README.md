@@ -85,11 +85,25 @@ const info = JSON.parse(await fs.readFile(`${dir}/${id}/info.json`, 'utf8'));
 console.log(info.author);
 ```
 
+## Deleting scans
+
+Remove stored scan data when no longer needed:
+
+```bash
+curl -X DELETE \
+  -H "Authorization: Bearer $API_TOKEN" \
+  http://localhost:4000/api/scans/{id}
+```
+
+Successful deletion returns status `204` with no body. Requests for
+non-existing scans respond with `404`.
+
 ## Responses
 
 Both `POST http://localhost:4000/api/scans`,
-`GET http://localhost:4000/api/scans/{id}/room.glb` and
-`GET http://localhost:4000/api/scans/{id}/info` may return:
+`GET http://localhost:4000/api/scans/{id}/room.glb`,
+`GET http://localhost:4000/api/scans/{id}/info` and
+`DELETE http://localhost:4000/api/scans/{id}` may return:
 
 - `401` – Unauthorized
 - `400` – Bad request
@@ -109,6 +123,12 @@ Both `POST http://localhost:4000/api/scans`,
 
 `GET http://localhost:4000/api/scans/{id}/info` may also return:
 
+- `404` – Not found
+- `429` – Too many requests
+
+`DELETE http://localhost:4000/api/scans/{id}` may also return:
+
+- `204` – Scan deleted
 - `404` – Not found
 - `429` – Too many requests
 

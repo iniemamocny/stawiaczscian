@@ -7,6 +7,7 @@ import { randomUUID } from 'crypto';
 
 let app;
 let tmpDir;
+let uploadedId;
 
 before(async () => {
   tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'api-test-'));
@@ -48,6 +49,7 @@ describe('API server', () => {
     assert.equal(res.status, 202);
     assert.match(res.body.id, /^[0-9a-f-]{36}$/);
     assert.equal(res.headers.location, `/api/scans/${res.body.id}`);
+    uploadedId = res.body.id;
 
     let status = 'pending';
     let pollRes;
@@ -69,6 +71,26 @@ describe('API server', () => {
     const missing = randomUUID();
     await request(app)
       .get(`/api/scans/${missing}`)
+      .set('Authorization', 'Bearer testtoken')
+      .expect(404);
+  });
+
+  it('deletes scan directory', async () => {
+    await request(app)
+      .delete(`/api/scans/${uploadedId}`)
+      .set('Authorization', 'Bearer testtoken')
+      .expect(204);
+
+    await request(app)
+      .get(`/api/scans/${uploadedId}`)
+      .set('Authorization', 'Bearer testtoken')
+      .expect(404);
+  });
+
+  it('returns 404 when deleting missing id', async () => {
+    const missing = randomUUID();
+    await request(app)
+      .delete(`/api/scans/${missing}`)
       .set('Authorization', 'Bearer testtoken')
       .expect(404);
   });
