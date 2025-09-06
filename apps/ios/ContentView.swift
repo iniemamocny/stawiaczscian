@@ -81,10 +81,14 @@ struct ContentView: View {
 
     func uploadFile(url: URL) async {
         let monitor = NWPathMonitor()
-        monitor.start(queue: DispatchQueue.global(qos: .background))
-        let hasConnection = monitor.currentPath.status == .satisfied
+        let path = await withCheckedContinuation { continuation in
+            monitor.pathUpdateHandler = { path in
+                continuation.resume(returning: path)
+            }
+            monitor.start(queue: DispatchQueue.global(qos: .background))
+        }
         monitor.cancel()
-        if !hasConnection {
+        guard path.status == .satisfied else {
             uploadResult = "Brak połączenia z internetem"
             return
         }
@@ -161,7 +165,7 @@ struct ContentView: View {
                 task.resume()
             }
 
-            if let http = resp as? HTTPURLResponse, http.statusCode == 200 {
+            if let http = resp as? HTTPURLResponse, (200..<300).contains(http.statusCode) {
                 uploadResult = String(data: respData, encoding: .utf8) ?? "OK"
             } else {
                 uploadResult = "Błąd wysyłki (status: \((resp as? HTTPURLResponse)?.statusCode ?? -1))"
