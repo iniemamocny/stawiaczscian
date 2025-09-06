@@ -44,4 +44,4 @@ jobs:
       - name: Install swift-format
         run: brew install swift-format
       - name: Lint Swift code
-        run: swift format lint --configuration .swift-format --strict --recursive apps/ios
+        run: swift format lint --configuration .swift-format --strict --recursive .
