@@ -2,6 +2,7 @@
 import SwiftUI
 import Foundation
 import RoomPlan
+import Network
 
 struct ContentView: View {
     @State private var lastExportURL: URL? = nil
@@ -51,7 +52,11 @@ struct ContentView: View {
                         Text("Zeskanuj pokój i zapisz plik przed wysyłką.").font(.footnote).foregroundColor(.secondary)
                     }
 
-                    if let result = uploadResult { Text(result).font(.callout).foregroundColor(.green) }
+                    if let result = uploadResult {
+                        Text(result)
+                            .font(.callout)
+                            .foregroundColor(result.contains("Błąd") || result.contains("Brak") ? .red : .green)
+                    }
                 } else {
                     Text("To urządzenie nie obsługuje RoomPlan.")
                         .font(.footnote)
@@ -75,6 +80,15 @@ struct ContentView: View {
     }
 
     func uploadFile(url: URL) async {
+        let monitor = NWPathMonitor()
+        monitor.start(queue: DispatchQueue.global(qos: .background))
+        let hasConnection = monitor.currentPath.status == .satisfied
+        monitor.cancel()
+        if !hasConnection {
+            uploadResult = "Brak połączenia z internetem"
+            return
+        }
+
         guard url.startAccessingSecurityScopedResource() else { return }
         defer { url.stopAccessingSecurityScopedResource() }
         isUploading = true

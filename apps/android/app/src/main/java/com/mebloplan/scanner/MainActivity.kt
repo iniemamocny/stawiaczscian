@@ -3,6 +3,8 @@ package com.mebloplan.scanner
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.content.Context
+import android.net.ConnectivityManager
 import android.os.Bundle
 import android.view.View
 import androidx.appcompat.app.AppCompatActivity
@@ -194,6 +196,14 @@ class MainActivity : AppCompatActivity() {
 
     private fun uploadLast() {
         val f = lastPlyFile ?: run { info.text = "Brak pliku do wysłania"; return }
+
+        val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val connected = cm.activeNetworkInfo?.isConnected == true
+        if (!connected) {
+            info.text = "Brak połączenia z internetem"
+            return
+        }
+
         scope.launch {
             try {
                 val resp = Uploader.upload(
