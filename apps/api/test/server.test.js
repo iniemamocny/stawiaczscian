@@ -250,10 +250,22 @@ describe('API server', () => {
     });
   });
 
-  it.skip('sends progress updates via WebSocket', async () => {
+  it('sends intermediate progress updates via WebSocket', async function () {
+    this.timeout(5000);
+    const script = `#!/usr/bin/env node\nconst fs=require('fs');\nconst path=require('path');\nconst args=process.argv.slice(2);\nif(args[0]=='--version') process.exit(0);\nconst out=args[args.length-1];\nfs.mkdirSync(path.dirname(out),{recursive:true});\nconst steps=[0,50,100];\n(function run(i){\n console.log(steps[i]+"%");\n if(steps[i]===100){fs.writeFileSync(out,'x');process.exit(0);}\n setTimeout(()=>run(i+1),10);\n})(0);\n`;
+    const mockPath = path.join(tmpDir, 'mock_blender_progress.js');
+    await fs.writeFile(mockPath, script);
+    await fs.chmod(mockPath, 0o755);
+
     const port = 5000;
     const serverProc = spawn('node', ['server.js'], {
-      env: { ...process.env, NODE_ENV: 'ws-test', PORT: String(port) },
+      env: {
+        ...process.env,
+        NODE_ENV: 'ws-test',
+        PORT: String(port),
+        BLENDER_PATH: mockPath,
+        SKIP_FILETYPE_CHECK: '1',
+      },
       stdio: ['ignore', 'pipe', 'inherit'],
     });
     await new Promise(resolve => serverProc.stdout.once('data', resolve));
@@ -262,19 +274,25 @@ describe('API server', () => {
       headers: { Authorization: 'Bearer testtoken' },
     });
     await new Promise(r => ws.on('open', r));
-    const message = new Promise(resolve =>
-      ws.once('message', data => resolve(JSON.parse(data.toString())))
-    );
+    const progresses = [];
+    const done = new Promise(resolve => {
+      ws.on('message', data => {
+        const msg = JSON.parse(data.toString());
+        progresses.push(msg.progress);
+        if (msg.progress === 100) resolve();
+      });
+    });
 
-      const res = await request(`http://127.0.0.1:${port}`)
-        .post('/api/scans')
-        .set('Authorization', 'Bearer testtoken')
-        .attach('file', Buffer.from('data'), 'model.obj');
+    const res = await request(`http://127.0.0.1:${port}`)
+      .post('/api/scans')
+      .set('Authorization', 'Bearer testtoken')
+      .attach('file', Buffer.from('data'), 'model.obj');
 
     assert.equal(res.status, 202);
-    const msg = await message;
-    assert.equal(msg.id, res.body.id);
-    assert.equal(typeof msg.progress, 'number');
+    await done;
+    assert.equal(progresses[0], 0);
+    assert(progresses.some(p => p > 0 && p < 100));
+    assert.equal(progresses[progresses.length - 1], 100);
 
     ws.close();
     serverProc.kill();

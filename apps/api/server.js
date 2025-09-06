@@ -17,6 +17,7 @@ import rateLimit from 'express-rate-limit';
 import morgan from 'morgan';
 import Ajv from 'ajv';
 import { WebSocketServer, WebSocket } from 'ws';
+import readline from 'readline';
 
 function parsePositiveInt(value, fallback) {
   const parsed = parseInt(value, 10);
@@ -30,6 +31,8 @@ function parsePositiveInt(value, fallback) {
 const uploadDir = path.resolve(process.env.UPLOAD_DIR || 'uploads');
 const storageDir = path.resolve(process.env.STORAGE_DIR || 'storage');
 const isTest = process.env.NODE_ENV === 'test';
+const skipFileTypeCheck =
+  isTest || process.env.SKIP_FILETYPE_CHECK === '1';
 const ajv = new Ajv({ allErrors: true });
 const metaSchema = {
   type: 'object',
@@ -215,7 +218,7 @@ app.post('/api/scans', upload.single('file'), async (req, res) => {
       return res.status(400).json({ error: 'invalid file type' });
     }
 
-    const detected = isTest
+    const detected = skipFileTypeCheck
       ? { mime: file.mimetype }
       : await fileTypeFromFile(file.path).catch(() => null);
     if (!detected || !allowedMimes.includes(detected.mime)) {
@@ -283,9 +286,28 @@ app.post('/api/scans', upload.single('file'), async (req, res) => {
         console.log('[BLENDER]', blender, args.join(' '));
 
         await new Promise((resolve, reject) => {
-          const p = spawn(blender, args, { stdio: 'inherit' });
+          const p = spawn(blender, args, { stdio: ['ignore', 'pipe', 'inherit'] });
           p.on('error', e => reject(e));
+
+          p.stdout.setEncoding('utf8');
+          const rl = readline.createInterface({ input: p.stdout });
+          rl.on('line', line => {
+            console.log(line);
+            const m = line.match(/(\d+(?:\.\d+)?)%/);
+            if (m) {
+              const progress = Math.max(0, Math.min(100, parseFloat(m[1])));
+              if (progress !== info.progress) {
+                info.progress = progress;
+                fs.promises
+                  .writeFile(infoPath, JSON.stringify(info, null, 2))
+                  .catch(() => {});
+                sendProgress(id, info.progress);
+              }
+            }
+          });
+
           p.on('exit', async code => {
+            rl.close();
             if (code === 0) {
               try {
                 await fs.promises.access(glbPath);
