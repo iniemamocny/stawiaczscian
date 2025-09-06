@@ -187,6 +187,11 @@ paths:
               schema:
                 type: string
               example: public, max-age=86400, immutable
+            Last-Modified:
+              description: Last modification time of the metadata.
+              schema:
+                type: string
+              example: Wed, 21 Oct 2015 07:28:00 GMT
           content:
             application/json:
               schema:
@@ -222,6 +227,11 @@ paths:
               schema:
                 type: string
               example: public, max-age=86400, immutable
+            Last-Modified:
+              description: Last modification time of the metadata.
+              schema:
+                type: string
+              example: Wed, 21 Oct 2015 07:28:00 GMT
         '400':
           description: Bad request.
         '401':
@@ -273,6 +283,11 @@ paths:
               description: Size of the model in bytes.
               schema:
                 type: integer
+            Last-Modified:
+              description: Last modification time of the model.
+              schema:
+                type: string
+              example: Wed, 21 Oct 2015 07:28:00 GMT
         content:
           model/gltf-binary:
             schema:
@@ -289,6 +304,11 @@ paths:
               description: Size of the model in bytes.
               schema:
                 type: integer
+            Last-Modified:
+              description: Last modification time of the model.
+              schema:
+                type: string
+              example: Wed, 21 Oct 2015 07:28:00 GMT
         '400':
           description: Bad request.
         '401':
@@ -339,6 +359,11 @@ paths:
               description: Size of the model in bytes.
               schema:
                 type: integer
+            Last-Modified:
+              description: Last modification time of the model.
+              schema:
+                type: string
+              example: Wed, 21 Oct 2015 07:28:00 GMT
         '304':
           description: Not modified.
           headers:
@@ -350,6 +375,11 @@ paths:
               description: Size of the model in bytes.
               schema:
                 type: integer
+            Last-Modified:
+              description: Last modification time of the model.
+              schema:
+                type: string
+              example: Wed, 21 Oct 2015 07:28:00 GMT
         '400':
           description: Bad request.
         '401':

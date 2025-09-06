@@ -25,3 +25,6 @@ Odpowiedzi API są kompresowane przy użyciu biblioteki [compression](https://ww
 
 Pobrane modele GLB można cache'ować przez 24 godziny dzięki nagłówkowi
 `Cache-Control: public, max-age=86400, immutable`.
+Serwer wysyła też `Last-Modified`, więc klienci mogą użyć nagłówka
+`If-Modified-Since`, aby uniknąć pobierania niezmienionych plików (odpowiedź
+`304`).
