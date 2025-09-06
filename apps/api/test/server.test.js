@@ -33,24 +33,42 @@ after(async () => {
 
 describe('API server', () => {
   it('rejects request without token', async () => {
-    await request(app).get('/api/scans/some/info').expect(401);
+    await request(app).get('/api/scans/some').expect(401);
   });
 
-  it('uploads file and returns id and url', async () => {
+  it('uploads file and processes asynchronously', async () => {
     const res = await request(app)
       .post('/api/scans')
       .set('Authorization', 'Bearer testtoken')
-      .attach('file', Buffer.from('data'), { filename: 'model.obj', contentType: 'application/octet-stream' });
+      .attach('file', Buffer.from('data'), {
+        filename: 'model.obj',
+        contentType: 'application/octet-stream',
+      });
 
-    assert.equal(res.status, 200);
+    assert.equal(res.status, 202);
     assert.match(res.body.id, /^[0-9a-f-]{36}$/);
-    assert.match(res.body.url, new RegExp(`/api/scans/${res.body.id}/room\\.glb$`));
+    assert.equal(res.headers.location, `/api/scans/${res.body.id}`);
+
+    let status = 'pending';
+    let pollRes;
+    for (let i = 0; i < 20 && status === 'pending'; i++) {
+      pollRes = await request(app)
+        .get(`/api/scans/${res.body.id}`)
+        .set('Authorization', 'Bearer testtoken');
+      status = pollRes.body.status;
+      if (status === 'pending') await new Promise(r => setTimeout(r, 10));
+    }
+    assert.equal(pollRes.body.status, 'done');
+    assert.match(
+      pollRes.body.url,
+      new RegExp(`/api/scans/${res.body.id}/room\\.glb$`)
+    );
   });
 
   it('responds 404 for missing id', async () => {
     const missing = randomUUID();
     await request(app)
-      .get(`/api/scans/${missing}/info`)
+      .get(`/api/scans/${missing}`)
       .set('Authorization', 'Bearer testtoken')
       .expect(404);
   });
