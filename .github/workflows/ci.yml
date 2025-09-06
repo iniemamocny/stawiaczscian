@@ -25,5 +25,7 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
-      - run: brew install swift-format
-      - run: swift format lint --configuration .swift-format --strict --recursive .
+      - name: Install swift-format
+        run: brew install swift-format
+      - name: Lint Swift code
+        run: swift format lint --configuration .swift-format --strict --recursive .
