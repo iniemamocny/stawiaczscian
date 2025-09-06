@@ -94,6 +94,51 @@ paths:
         '500':
           description: Server error.
   /api/scans/{id}:
+    get:
+      summary: Retrieve conversion status by id.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          description: Unique scan ID.
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Conversion status information.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - status
+                  - progress
+                properties:
+                  status:
+                    type: string
+                    description: Current conversion state.
+                  progress:
+                    type: integer
+                    minimum: 0
+                    maximum: 100
+                    description: Conversion progress percentage.
+                  url:
+                    type: string
+                    format: uri
+                    description: Download URL when conversion finished.
+        '400':
+          description: Bad request.
+        '401':
+          description: Unauthorized.
+        '404':
+          description: Not found.
+        '429':
+          description: Too many requests.
+        '500':
+          description: Server error.
     delete:
       summary: Delete scan directory by id.
       security:
