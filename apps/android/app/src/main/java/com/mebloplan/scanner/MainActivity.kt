@@ -5,6 +5,7 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.content.Context
 import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.os.Bundle
 import android.view.View
 import androidx.appcompat.app.AppCompatActivity
@@ -198,8 +199,9 @@ class MainActivity : AppCompatActivity() {
         val f = lastPlyFile ?: run { info.text = "Brak pliku do wysłania"; return }
 
         val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-        val connected = cm.activeNetworkInfo?.isConnected == true
-        if (!connected) {
+        val hasInternet = cm.getNetworkCapabilities(cm.activeNetwork)
+            ?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
+        if (!hasInternet) {
             info.text = "Brak połączenia z internetem"
             return
         }
