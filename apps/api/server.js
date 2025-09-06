@@ -8,6 +8,7 @@ import fs from 'fs';
 import { pipeline } from 'stream/promises';
 import cors from 'cors';
 import helmet from 'helmet';
+import compression from 'compression';
 import 'dotenv/config';
 import PQueue from 'p-queue';
 import { fileTypeFromFile } from 'file-type';
@@ -87,6 +88,7 @@ app.use(
   })
 );
 app.use(helmet());
+app.use(compression());
 app.use(cors({ origin: process.env.ALLOWED_ORIGINS?.split(',') }));
 const upload = multer({
   dest: uploadDir,
