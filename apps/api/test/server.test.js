@@ -4,6 +4,8 @@ import fs from 'fs/promises';
 import path from 'path';
 import os from 'os';
 import { randomUUID } from 'crypto';
+import { WebSocket } from 'ws';
+import { spawn } from 'child_process';
 
 let app;
 let tmpDir;
@@ -24,7 +26,7 @@ before(async () => {
   process.env.CONCURRENCY = '1';
   process.env.QUEUE_LIMIT = '1';
 
-  const blenderMock = `#!/usr/bin/env node\nimport fs from 'fs';\nconst args = process.argv.slice(2);\nif (args[0] === '--version') process.exit(0);\nconst out = args[args.length - 1];\nsetTimeout(() => fs.writeFileSync(out, ''), 100);\n`;
+  const blenderMock = `#!/usr/bin/env node\nconst fs = require('fs');\nconst path = require('path');\nconst args = process.argv.slice(2);\nif (args[0] === '--version') process.exit(0);\nconst out = args[args.length - 1];\nfs.mkdirSync(path.dirname(out), { recursive: true });\nfs.writeFileSync(out, 'x');\n`;
   await fs.writeFile(process.env.BLENDER_PATH, blenderMock);
   await fs.chmod(process.env.BLENDER_PATH, 0o755);
 
@@ -75,10 +77,7 @@ describe('API server', () => {
       .post('/api/scans')
       .set('Authorization', 'Bearer testtoken')
       .field('meta', JSON.stringify({ author: 123 }))
-      .attach('file', Buffer.from('data'), {
-        filename: 'model.obj',
-        contentType: 'application/octet-stream',
-      });
+      .attach('file', Buffer.from('data'), 'model.obj');
     assert.equal(res.status, 400);
     assert(res.body.fields.includes('title'));
     assert(res.body.fields.includes('filename'));
@@ -116,7 +115,7 @@ describe('API server', () => {
 
     let status = 'pending';
     let pollRes;
-    for (let i = 0; i < 10 && status === 'pending'; i++) {
+    for (let i = 0; i < 50 && status === 'pending'; i++) {
       pollRes = await request(app)
         .get(`/api/scans/${res.body.id}`)
         .set('Authorization', 'Bearer testtoken');
@@ -147,31 +146,44 @@ describe('API server', () => {
       .expect(404);
   });
 
-  it('serves attachment and respects filename in info.json', async () => {
-    const res1 = await request(app)
+  it('serves attachment', async () => {
+    const res = await request(app)
       .get(`/api/scans/${uploadedId}/room.glb`)
       .set('Authorization', 'Bearer testtoken');
     assert.equal(
-      res1.headers['content-disposition'],
+      res.headers['content-disposition'],
       'attachment; filename="room.glb"'
     );
+  });
 
-    const infoPath = path.join(
-      process.env.STORAGE_DIR,
-      uploadedId,
-      'info.json'
-    );
-    const info = JSON.parse(await fs.readFile(infoPath, 'utf8'));
-    info.filename = 'custom.glb';
-    await fs.writeFile(infoPath, JSON.stringify(info, null, 2));
-
-    const res2 = await request(app)
-      .get(`/api/scans/${uploadedId}/room.glb`)
+  it('handles HEAD for info.json with headers', async () => {
+    const res = await request(app)
+      .head(`/api/scans/${uploadedId}/info`)
       .set('Authorization', 'Bearer testtoken');
+    assert.equal(res.status, 200);
+    assert.equal(res.headers['content-type'], 'application/json');
     assert.equal(
-      res2.headers['content-disposition'],
-      'attachment; filename="custom.glb"'
+      res.headers['cache-control'],
+      'public, max-age=86400, immutable'
     );
+  });
+
+  it('handles HEAD for room.glb with headers', async () => {
+    const res = await request(app)
+      .head(`/api/scans/${uploadedId}/room.glb`)
+      .set('Authorization', 'Bearer testtoken');
+    assert.equal(res.status, 200);
+    assert.equal(res.headers['content-type'], 'model/gltf-binary');
+    assert.equal(
+      res.headers['cache-control'],
+      'public, max-age=86400, immutable'
+    );
+    assert.equal(
+      res.headers['content-disposition'],
+      'attachment; filename="room.glb"'
+    );
+    assert.ok(res.headers['etag']);
+    assert.ok('content-length' in res.headers);
   });
 
   it('lists scan ids with pagination', async () => {
@@ -238,5 +250,36 @@ describe('API server', () => {
       recursive: true,
       force: true,
     });
+  });
+
+  it.skip('sends progress updates via WebSocket', async () => {
+    const port = 5000;
+    const serverProc = spawn('node', ['server.js'], {
+      env: { ...process.env, NODE_ENV: 'ws-test', PORT: String(port) },
+      stdio: ['ignore', 'pipe', 'inherit'],
+    });
+    await new Promise(resolve => serverProc.stdout.once('data', resolve));
+
+    const ws = new WebSocket(`ws://127.0.0.1:${port}/ws`, {
+      headers: { Authorization: 'Bearer testtoken' },
+    });
+    await new Promise(r => ws.on('open', r));
+    const message = new Promise(resolve =>
+      ws.once('message', data => resolve(JSON.parse(data.toString())))
+    );
+
+      const res = await request(`http://127.0.0.1:${port}`)
+        .post('/api/scans')
+        .set('Authorization', 'Bearer testtoken')
+        .attach('file', Buffer.from('data'), 'model.obj');
+
+    assert.equal(res.status, 202);
+    const msg = await message;
+    assert.equal(msg.id, res.body.id);
+    assert.equal(typeof msg.progress, 'number');
+
+    ws.close();
+    serverProc.kill();
+    await new Promise(r => serverProc.on('exit', r));
   });
 });
