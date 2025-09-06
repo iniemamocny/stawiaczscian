@@ -21,13 +21,13 @@ import com.google.ar.core.PointCloud
 import com.google.ar.core.Session
 import com.google.ar.core.exceptions.UnavailableArcoreNotInstalledException
 import com.google.ar.core.exceptions.UnavailableDeviceNotCompatibleException
-import java.io.File
-import java.util.Locale
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
+import java.util.Locale
 
 class MainActivity : AppCompatActivity() {
     private var session: Session? = null
@@ -40,7 +40,7 @@ class MainActivity : AppCompatActivity() {
     private var lastPlyFile: File? = null
     private val scope = CoroutineScope(Dispatchers.Default)
     private var job: Job? = null
-    private val CAMERA_PERMISSION_CODE = 1001
+    private val cameraPermissionCode = 1001
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -97,7 +97,7 @@ class MainActivity : AppCompatActivity() {
             ActivityCompat.requestPermissions(
                 this,
                 arrayOf(Manifest.permission.CAMERA),
-                CAMERA_PERMISSION_CODE,
+                cameraPermissionCode,
             )
             return
         }
@@ -174,7 +174,7 @@ class MainActivity : AppCompatActivity() {
         grantResults: IntArray,
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == CAMERA_PERMISSION_CODE) {
+        if (requestCode == cameraPermissionCode) {
             if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 startScan()
             } else {
