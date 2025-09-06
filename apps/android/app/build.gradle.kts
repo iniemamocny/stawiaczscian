@@ -12,6 +12,9 @@ if (localPropsFile.exists()) {
 android {
     namespace = "com.mebloplan.scanner"
     compileSdk = 35
+    buildFeatures {
+        buildConfig = true
+    }
     defaultConfig {
         applicationId = "com.mebloplan.scanner"
         minSdk = 26
