@@ -340,7 +340,7 @@ app.get('/api/scans/:id', async (req, res) => {
 
     const baseDir = path.resolve(storageDir);
     const infoPath = path.resolve(baseDir, id, 'info.json');
-    if (!infoPath.startsWith(baseDir + path.sep)) {
+    if (path.relative(baseDir, infoPath).startsWith('..')) {
       return res.status(403).json({ error: 'forbidden' });
     }
 
@@ -373,7 +373,7 @@ app.head('/api/scans/:id/info', async (req, res) => {
 
     const baseDir = path.resolve(storageDir);
     const filePath = path.resolve(baseDir, id, 'info.json');
-    if (!filePath.startsWith(baseDir + path.sep)) {
+    if (path.relative(baseDir, filePath).startsWith('..')) {
       return res.status(403).end();
     }
 
@@ -399,7 +399,7 @@ app.get('/api/scans/:id/info', async (req, res) => {
 
     const baseDir = path.resolve(storageDir);
     const filePath = path.resolve(baseDir, id, 'info.json');
-    if (!filePath.startsWith(baseDir + path.sep)) {
+    if (path.relative(baseDir, filePath).startsWith('..')) {
       return res.status(403).json({ error: 'forbidden' });
     }
 
@@ -425,7 +425,7 @@ app.head('/api/scans/:id/room.glb', async (req, res) => {
 
     const baseDir = path.resolve(storageDir);
     const filePath = path.resolve(baseDir, id, 'room.glb');
-    if (!filePath.startsWith(baseDir + path.sep)) {
+    if (path.relative(baseDir, filePath).startsWith('..')) {
       return res.status(403).end();
     }
 
@@ -484,7 +484,7 @@ app.get('/api/scans/:id/room.glb', async (req, res) => {
 
     const baseDir = path.resolve(storageDir);
     const filePath = path.resolve(baseDir, id, 'room.glb');
-    if (!filePath.startsWith(baseDir + path.sep)) {
+    if (path.relative(baseDir, filePath).startsWith('..')) {
       return res.status(403).json({ error: 'forbidden' });
     }
 
@@ -555,7 +555,7 @@ app.delete('/api/scans/:id', async (req, res) => {
 
     const baseDir = path.resolve(storageDir);
     const dirPath = path.resolve(baseDir, id);
-    if (!dirPath.startsWith(baseDir + path.sep)) {
+    if (path.relative(baseDir, dirPath).startsWith('..')) {
       return res.status(403).json({ error: 'forbidden' });
     }
 
