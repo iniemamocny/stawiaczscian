@@ -5,8 +5,21 @@
     <key>CFBundleName</key>
     <string>MebloPlanScanner</string>
     <key>API_URL</key>
-    <string>http://localhost:4000/api/scans</string>
+    <string>https://localhost:4000/api/scans</string>
     <key>API_TOKEN</key>
     <string>REPLACE_WITH_API_TOKEN</string>
+    <key>NSAppTransportSecurity</key>
+    <dict>
+        <key>NSAllowsArbitraryLoads</key>
+        <false/>
+        <key>NSExceptionDomains</key>
+        <dict>
+            <key>localhost</key>
+            <dict>
+                <key>NSExceptionAllowsInsecureHTTPLoads</key>
+                <true/>
+            </dict>
+        </dict>
+    </dict>
 </dict>
 </plist>
