@@ -79,9 +79,7 @@ describe('API server', () => {
       .field('meta', JSON.stringify({ author: 123 }))
       .attach('file', Buffer.from('data'), 'model.obj');
     assert.equal(res.status, 400);
-    assert(res.body.fields.includes('title'));
-    assert(res.body.fields.includes('filename'));
-    assert(res.body.fields.includes('author'));
+    assert.deepStrictEqual(res.body.fields, ['author']);
   });
 
   it('returns 400 when metadata is too large', async () => {

@@ -37,8 +37,10 @@ const metaSchema = {
     title: { type: 'string' },
     author: { type: 'string' },
     filename: { type: 'string' },
+    platform: { type: 'string' },
+    format: { type: 'string' },
   },
-  required: ['title', 'author', 'filename'],
+  required: ['author'],
   additionalProperties: false,
 };
 
