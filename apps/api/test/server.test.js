@@ -20,6 +20,7 @@ before(async () => {
   process.env.API_TOKEN = 'testtoken';
   process.env.BLENDER_PATH = path.join(tmpDir, 'mock_blender.js');
   process.env.NODE_ENV = 'test';
+  process.env.MAX_UPLOAD_BYTES = '10';
 
   const blenderMock = `#!/usr/bin/env node\nimport fs from 'fs';\nconst args = process.argv.slice(2);\nif (args[0] === '--version') process.exit(0);\nconst out = args[args.length - 1];\nfs.writeFileSync(out, '');\n`;
   await fs.writeFile(process.env.BLENDER_PATH, blenderMock);
@@ -35,6 +36,28 @@ after(async () => {
 describe('API server', () => {
   it('rejects request without token', async () => {
     await request(app).get('/api/scans/some').expect(401);
+  });
+
+  it('rejects file with disallowed extension', async () => {
+    await request(app)
+      .post('/api/scans')
+      .set('Authorization', 'Bearer testtoken')
+      .attach('file', Buffer.from('data'), {
+        filename: 'model.txt',
+        contentType: 'text/plain',
+      })
+      .expect(400);
+  });
+
+  it('returns 413 when file is too large', async () => {
+    await request(app)
+      .post('/api/scans')
+      .set('Authorization', 'Bearer testtoken')
+      .attach('file', Buffer.alloc(20), {
+        filename: 'model.obj',
+        contentType: 'application/octet-stream',
+      })
+      .expect(413);
   });
 
   it('uploads file and processes asynchronously', async () => {
