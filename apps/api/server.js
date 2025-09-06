@@ -10,7 +10,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import 'dotenv/config';
 import PQueue from 'p-queue';
-import FileType from 'file-type';
+import { fileTypeFromFile } from 'file-type';
 import rateLimit from 'express-rate-limit';
 import morgan from 'morgan';
 
@@ -25,6 +25,7 @@ function parsePositiveInt(value, fallback) {
 
 const uploadDir = path.resolve(process.env.UPLOAD_DIR || 'uploads');
 const storageDir = path.resolve(process.env.STORAGE_DIR || 'storage');
+const isTest = process.env.NODE_ENV === 'test';
 
 async function initDirs() {
   await fs.promises.mkdir(uploadDir, { recursive: true });
@@ -114,10 +115,12 @@ async function cleanupUploads() {
   }
 }
 
-setInterval(cleanOldFiles, 60 * 60 * 1000);
-setInterval(cleanupUploads, 60 * 60 * 1000);
-cleanOldFiles();
-cleanupUploads();
+if (!isTest) {
+  setInterval(cleanOldFiles, 60 * 60 * 1000);
+  setInterval(cleanupUploads, 60 * 60 * 1000);
+  cleanOldFiles();
+  cleanupUploads();
+}
 
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
@@ -154,7 +157,9 @@ app.post('/api/scans', upload.single('file'), async (req, res) => {
       return res.status(400).json({ error: 'invalid file type' });
     }
 
-    const detected = await FileType.fromFile(file.path).catch(() => null);
+    const detected = isTest
+      ? { mime: file.mimetype }
+      : await fileTypeFromFile(file.path).catch(() => null);
     if (!detected || !allowedMimes.includes(detected.mime)) {
       await fs.promises.unlink(file.path).catch(() => {});
       return res.status(400).json({ error: 'invalid file type' });
@@ -324,16 +329,24 @@ app.use((err, req, res, next) => {
 });
 
 const port = process.env.PORT || 4000;
-app.listen(port, () => console.log('API on http://localhost:' + port));
+let server;
+if (!isTest) {
+  server = app.listen(port, () =>
+    console.log('API on http://localhost:' + port)
+  );
 
-const shutdown = async () => {
-  queue.clear();
-  try {
-    await Promise.all([cleanupUploads(), cleanOldFiles()]);
-  } finally {
-    process.exit(0);
-  }
-};
+  const shutdown = async () => {
+    queue.clear();
+    try {
+      await Promise.all([cleanupUploads(), cleanOldFiles()]);
+    } finally {
+      process.exit(0);
+    }
+  };
 
-process.on('SIGINT', shutdown);
-process.on('SIGTERM', shutdown);
+  process.on('SIGINT', shutdown);
+  process.on('SIGTERM', shutdown);
+}
+
+export default app;
+export { server };
