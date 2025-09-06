@@ -12,6 +12,7 @@ import 'dotenv/config';
 import PQueue from 'p-queue';
 import FileType from 'file-type';
 import rateLimit from 'express-rate-limit';
+import morgan from 'morgan';
 
 function parsePositiveInt(value, fallback) {
   const parsed = parseInt(value, 10);
@@ -43,6 +44,7 @@ async function verifyBlender() {
 }
 
 const app = express();
+app.use(morgan(process.env.LOG_FORMAT || 'combined'));
 await initDirs();
 try {
   await verifyBlender();
