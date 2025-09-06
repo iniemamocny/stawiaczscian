@@ -28,6 +28,18 @@ function parsePositiveInt(value, fallback) {
   return parsed;
 }
 
+const DEFAULT_FILENAME = 'room.glb';
+function sanitizeFilename(name) {
+  if (typeof name !== 'string') return DEFAULT_FILENAME;
+  let base = path.basename(name);
+  base = base
+    .replace(/[\\/]/g, '')
+    .replace(/[\x00-\x1f\x80-\x9f]/g, '')
+    .trim();
+  if (!base || base === '.' || base === '..') return DEFAULT_FILENAME;
+  return base;
+}
+
 const uploadDir = path.resolve(process.env.UPLOAD_DIR || 'uploads');
 const storageDir = path.resolve(process.env.STORAGE_DIR || 'storage');
 const isTest = process.env.NODE_ENV === 'test';
@@ -266,9 +278,9 @@ app.post('/api/scans', upload.single('file'), async (req, res) => {
     await fs.promises.rename(file.path, inputPath);
 
     const infoPath = path.join(outDir, 'info.json');
-    const info = { status: 'pending', filename: 'room.glb', progress: 0 };
+    const info = { status: 'pending', filename: DEFAULT_FILENAME, progress: 0 };
     if (meta) {
-      if (meta.filename) info.filename = String(meta.filename);
+      if (meta.filename) info.filename = sanitizeFilename(String(meta.filename));
       info.meta = meta;
     }
     await fs.promises.writeFile(infoPath, JSON.stringify(info, null, 2));
@@ -508,7 +520,7 @@ app.head('/api/scans/:id/room.glb', async (req, res) => {
 
     res.setHeader('Content-Type', 'model/gltf-binary');
     res.setHeader('Cache-Control', 'public, max-age=86400, immutable');
-    const filename = info.filename || 'room.glb';
+    const filename = sanitizeFilename(info.filename || DEFAULT_FILENAME);
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.status(200).end();
   } catch (e) {
@@ -575,7 +587,7 @@ app.get('/api/scans/:id/room.glb', async (req, res) => {
 
     res.setHeader('Content-Type', 'model/gltf-binary');
     res.setHeader('Cache-Control', 'public, max-age=86400, immutable');
-    const filename = info.filename || 'room.glb';
+    const filename = sanitizeFilename(info.filename || DEFAULT_FILENAME);
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
 
     const stream = fs.createReadStream(filePath);
