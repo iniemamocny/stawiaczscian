@@ -374,7 +374,7 @@ app.head('/api/scans/:id/room.glb', async (req, res) => {
       return res.status(403).end();
     }
 
-    await fs.promises.access(filePath);
+    const stat = await fs.promises.stat(filePath);
 
     const infoPath = path.resolve(baseDir, id, 'info.json');
     let info = {};
@@ -398,6 +398,7 @@ app.head('/api/scans/:id/room.glb', async (req, res) => {
     }
 
     res.setHeader('ETag', etag);
+    res.setHeader('Content-Length', stat.size);
 
     if (req.headers['if-none-match'] === etag) {
       return res.status(304).end();
@@ -432,7 +433,7 @@ app.get('/api/scans/:id/room.glb', async (req, res) => {
       return res.status(403).json({ error: 'forbidden' });
     }
 
-    await fs.promises.access(filePath);
+    const stat = await fs.promises.stat(filePath);
 
     const infoPath = path.resolve(baseDir, id, 'info.json');
     let info = {};
@@ -456,6 +457,7 @@ app.get('/api/scans/:id/room.glb', async (req, res) => {
     }
 
     res.setHeader('ETag', etag);
+    res.setHeader('Content-Length', stat.size);
 
     if (req.headers['if-none-match'] === etag) {
       return res.status(304).end();
