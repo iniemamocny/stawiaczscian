@@ -58,6 +58,32 @@ paths:
           description: Too many requests. Conversion queue is full.
         '500':
           description: Server error.
+  /api/scans/{id}:
+    delete:
+      summary: Delete scan directory by id.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          description: Unique scan ID.
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Scan deleted.
+        '400':
+          description: Bad request.
+        '401':
+          description: Unauthorized.
+        '404':
+          description: Not found.
+        '429':
+          description: Too many requests.
+        '500':
+          description: Server error.
   /api/scans/{id}/info:
     get:
       summary: Retrieve scan metadata by scan id.

@@ -255,6 +255,7 @@ app.post('/api/scans', upload.single('file'), async (req, res) => {
   }
 });
 
+
 app.get('/api/scans/:id', async (req, res) => {
   try {
     const { id } = req.params;
@@ -375,6 +376,31 @@ app.get('/api/scans/:id/room.glb', async (req, res) => {
       } else {
         res.status(500).json({ error: 'server error' });
       }
+    }
+  }
+});
+
+app.delete('/api/scans/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!/^[0-9a-f-]{36}$/.test(id)) {
+      return res.status(400).json({ error: 'invalid id' });
+    }
+
+    const baseDir = path.resolve(storageDir);
+    const dirPath = path.resolve(baseDir, id);
+    if (!dirPath.startsWith(baseDir + path.sep)) {
+      return res.status(403).json({ error: 'forbidden' });
+    }
+
+    await fs.promises.access(dirPath);
+    await fs.promises.rm(dirPath, { recursive: true, force: true });
+    res.status(204).end();
+  } catch (e) {
+    if (e.code === 'ENOENT') {
+      res.status(404).json({ error: 'not found' });
+    } else {
+      res.status(500).json({ error: 'server error' });
     }
   }
 });
