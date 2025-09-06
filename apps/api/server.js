@@ -585,7 +585,11 @@ if (!isTest) {
 
   wss = new WebSocketServer({ noServer: true });
   server.on('upgrade', (req, socket, head) => {
-    if (req.url === '/ws') {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader?.startsWith('Bearer ')
+      ? authHeader.slice(7)
+      : authHeader;
+    if (req.url === '/ws' && token === process.env.API_TOKEN) {
       wss.handleUpgrade(req, socket, head, ws => {
         wss.emit('connection', ws, req);
       });
