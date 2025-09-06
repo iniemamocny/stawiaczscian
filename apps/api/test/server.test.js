@@ -101,6 +101,7 @@ describe('API server', () => {
     const res = await request(app)
       .post('/api/scans')
       .set('Authorization', 'Bearer testtoken')
+      .field('meta', JSON.stringify({ filename: '../weird\\name.glb', author: 'tester' }))
       .attach('file', Buffer.from('data'), {
         filename: 'model.obj',
         contentType: 'application/octet-stream',
@@ -127,6 +128,13 @@ describe('API server', () => {
       pollRes.body.url,
       new RegExp(`/api/scans/${res.body.id}/room\\.glb$`)
     );
+    const info = JSON.parse(
+      await fs.readFile(
+        path.join(process.env.STORAGE_DIR, res.body.id, 'info.json'),
+        'utf8'
+      )
+    );
+    assert.equal(info.filename, 'weirdname.glb');
   });
 
   it('returns 400 for invalid id format', async () => {
@@ -150,7 +158,7 @@ describe('API server', () => {
       .set('Authorization', 'Bearer testtoken');
     assert.equal(
       res.headers['content-disposition'],
-      'attachment; filename="room.glb"'
+      'attachment; filename="weirdname.glb"'
     );
   });
 
@@ -178,7 +186,7 @@ describe('API server', () => {
     );
     assert.equal(
       res.headers['content-disposition'],
-      'attachment; filename="room.glb"'
+      'attachment; filename="weirdname.glb"'
     );
     assert.ok(res.headers['etag']);
     assert.ok('content-length' in res.headers);
