@@ -61,6 +61,16 @@ can be JSON or a URL-encoded string. The server stores the parsed data next
 to the generated model as `info.json`. Metadata larger than `MAX_META_BYTES`
 is rejected.
 
+The `meta` object may contain the following keys:
+
+- `author` – **required**; name of the person creating the scan
+- `title` – optional descriptive title
+- `filename` – optional download name for the resulting model
+- `platform` – optional client platform identifier
+- `format` – optional source format description
+
+Any other keys are rejected.
+
 ```bash
 curl -H "Authorization: Bearer $API_TOKEN" \
   -F file=@scan.zip \
