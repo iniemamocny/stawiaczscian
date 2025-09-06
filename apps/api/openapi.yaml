@@ -223,11 +223,15 @@ paths:
               schema:
                 type: string
               example: attachment; filename="room.glb"
-          content:
-            model/gltf-binary:
+            Content-Length:
+              description: Size of the model in bytes.
               schema:
-                type: string
-                format: binary
+                type: integer
+        content:
+          model/gltf-binary:
+            schema:
+              type: string
+              format: binary
         '304':
           description: Not modified.
           headers:
@@ -235,6 +239,10 @@ paths:
               description: Entity tag for the model. Constant for a given file.
               schema:
                 type: string
+            Content-Length:
+              description: Size of the model in bytes.
+              schema:
+                type: integer
         '400':
           description: Bad request.
         '401':
@@ -281,6 +289,10 @@ paths:
               schema:
                 type: string
               example: attachment; filename="room.glb"
+            Content-Length:
+              description: Size of the model in bytes.
+              schema:
+                type: integer
         '304':
           description: Not modified.
           headers:
@@ -288,6 +300,10 @@ paths:
               description: Entity tag for the model. Constant for a given file.
               schema:
                 type: string
+            Content-Length:
+              description: Size of the model in bytes.
+              schema:
+                type: integer
         '400':
           description: Bad request.
         '401':
