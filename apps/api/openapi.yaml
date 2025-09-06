@@ -74,6 +74,12 @@ paths:
       responses:
         '200':
           description: GLB file.
+          headers:
+            Cache-Control:
+              description: Cache policy for the model.
+              schema:
+                type: string
+              example: public, max-age=86400, immutable
           content:
             model/gltf-binary:
               schema:

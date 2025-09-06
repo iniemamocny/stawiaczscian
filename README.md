@@ -14,3 +14,8 @@
 
 API korzysta z biblioteki [Helmet](https://helmetjs.github.io/),
 która ustawia standardowe nagłówki bezpieczeństwa chroniące aplikację.
+
+## Cache
+
+Pobrane modele GLB można cache'ować przez 24 godziny dzięki nagłówkowi
+`Cache-Control: public, max-age=86400, immutable`.
