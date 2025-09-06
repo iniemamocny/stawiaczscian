@@ -196,7 +196,10 @@ app.post('/api/scans', upload.single('file'), async (req, res) => {
         }
 
         const blender = process.env.BLENDER_PATH || 'blender';
-        const script = path.resolve('./convert_blender.py');
+        const script = path.join(
+          path.dirname(new URL(import.meta.url).pathname),
+          'convert_blender.py'
+        );
         const args = ['-b', '-P', script, '--', path.resolve(inputPath), path.resolve(glbPath)];
         console.log('[BLENDER]', blender, args.join(' '));
 
