@@ -6,12 +6,13 @@ on:
   pull_request:
     branches: ["main"]
 
+defaults:
+  run:
+    working-directory: apps/api
+
 jobs:
   node:
-    runs-on: ubuntu-22.04
-    defaults:
-      run:
-        working-directory: apps/api
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -21,9 +22,29 @@ jobs:
           cache-dependency-path: apps/api/package-lock.json
       - run: npm ci
       - run: npm test
-  ios:
-    runs-on: macos-latest
+
+  android:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/android
     steps:
       - uses: actions/checkout@v4
-      - run: brew install swift-format
-      - run: swift format lint --configuration .swift-format --strict --recursive .
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v4
+      - run: gradle kotlinLintCheck
+
+  ios:
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: .
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install swift-format
+        run: brew install swift-format
+      - name: Lint Swift code
+        run: swift format lint --configuration .swift-format --strict --recursive apps/ios
