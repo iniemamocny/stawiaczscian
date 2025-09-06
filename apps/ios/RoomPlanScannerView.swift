@@ -1,6 +1,5 @@
-
-import SwiftUI
 import RoomPlan
+import SwiftUI
 
 struct RoomPlanScannerView: UIViewRepresentable {
     typealias UIViewType = RoomCaptureView

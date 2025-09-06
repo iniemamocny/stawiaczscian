@@ -1,8 +1,7 @@
-
-import SwiftUI
 import Foundation
-import RoomPlan
 import Network
+import RoomPlan
+import SwiftUI
 
 struct ContentView: View {
     @State private var lastExportURL: URL? = nil
@@ -31,7 +30,9 @@ struct ContentView: View {
                         if exportFinished {
                             Text("Eksport zakończony").font(.footnote).foregroundColor(.green)
                         }
-                        Button { Task { await uploadFile(url: url) } } label: {
+                        Button {
+                            Task { await uploadFile(url: url) }
+                        } label: {
                             Text("Wyślij do MebloPlan")
                         }
                         .buttonStyle(.borderedProminent)
@@ -151,7 +152,7 @@ struct ContentView: View {
             }
             try handle.write(contentsOf: "\r\n".data(using: .utf8)!)
             try handle.write(contentsOf: "--\(boundary)--\r\n".data(using: .utf8)!)
-            try handle.close() // Zamknięcie zapewnia pełne zapisanie danych na dysk
+            try handle.close()  // Zamknięcie zapewnia pełne zapisanie danych na dysk
 
             let (respData, resp) = try await withCheckedThrowingContinuation { continuation in
                 let task = session.uploadTask(with: request, fromFile: tempURL) { data, response, error in
