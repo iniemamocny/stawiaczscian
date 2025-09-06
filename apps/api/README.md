@@ -100,6 +100,10 @@ The response JSON includes:
 - `progress` – conversion progress in percent (0–100)
 - `url` – download link for the GLB file when `status` is `done`
 
+For real-time updates without polling, open a WebSocket connection to `/ws`.
+The server sends JSON messages of the form `{ "id": "<scan-id>", "progress": <number> }`
+whenever conversion progress changes.
+
 ## Listing scans
 
 Retrieve identifiers of stored scans:

@@ -15,6 +15,7 @@ import { fileTypeFromFile } from 'file-type';
 import rateLimit from 'express-rate-limit';
 import morgan from 'morgan';
 import Ajv from 'ajv';
+import { WebSocketServer, WebSocket } from 'ws';
 
 function parsePositiveInt(value, fallback) {
   const parsed = parseInt(value, 10);
@@ -105,6 +106,17 @@ const maxFileAgeMs = parsePositiveInt(
 const concurrency = parsePositiveInt(process.env.CONCURRENCY, 2);
 const queueLimit = parsePositiveInt(process.env.QUEUE_LIMIT, 10);
 const queue = new PQueue({ concurrency });
+
+let wss;
+function sendProgress(id, progress) {
+  if (!wss) return;
+  const data = JSON.stringify({ id, progress });
+  for (const client of wss.clients) {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(data);
+    }
+  }
+}
 
 async function cleanOldFiles() {
   try {
@@ -254,6 +266,7 @@ app.post('/api/scans', upload.single('file'), async (req, res) => {
       info.meta = meta;
     }
     await fs.promises.writeFile(infoPath, JSON.stringify(info, null, 2));
+    sendProgress(id, 0);
 
     queue.add(async () => {
       const glbPath = path.join(outDir, 'room.glb');
@@ -299,6 +312,7 @@ app.post('/api/scans', upload.single('file'), async (req, res) => {
         await fs.promises
           .writeFile(infoPath, JSON.stringify(info, null, 2))
           .catch(() => {});
+        sendProgress(id, info.progress);
         fs.promises.unlink(inputPath).catch(() => {});
       }
     });
@@ -567,6 +581,17 @@ if (!isTest) {
   server = app.listen(port, () =>
     console.log('API on http://localhost:' + port)
   );
+
+  wss = new WebSocketServer({ noServer: true });
+  server.on('upgrade', (req, socket, head) => {
+    if (req.url === '/ws') {
+      wss.handleUpgrade(req, socket, head, ws => {
+        wss.emit('connection', ws, req);
+      });
+    } else {
+      socket.destroy();
+    }
+  });
 
   const shutdown = async () => {
     queue.clear();
