@@ -68,15 +68,15 @@ curl -H "Authorization: Bearer $API_TOKEN" \
   http://localhost:4000/api/scans
 ```
 
-The response contains the scan `id` (UUID) and `url`, for example
-`http://localhost:4000/api/scans/{id}/room.glb`. Use this `url` or the
-`id` with `GET http://localhost:4000/api/scans/{id}/room.glb` to download
-the converted model. Responses include an `ETag` header. The value is
-computed once after conversion and stays constant for a given file. Send this
-value in `If-None-Match` to avoid re-downloading unchanged files; the server
-returns `304` when the model has not changed. The metadata saved during upload can
-be retrieved with `GET http://localhost:4000/api/scans/{id}/info` or read
-directly from the filesystem:
+The server responds with status `202` and a JSON body containing only the scan `id`.
+The download link is returned in the `Location` header. Use this `Location` URL or
+the `id` with `GET http://localhost:4000/api/scans/{id}/room.glb` to download the
+converted model. Responses include an `ETag` header. The value is computed once
+after conversion and stays constant for a given file. Send this value in
+`If-None-Match` to avoid re-downloading unchanged files; the server returns `304`
+when the model has not changed. The metadata saved during upload can be retrieved
+with `GET http://localhost:4000/api/scans/{id}/info` or read directly from the
+filesystem:
 
 ```js
 import fs from 'fs/promises';
