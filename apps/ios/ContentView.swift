@@ -9,6 +9,8 @@ struct ContentView: View {
     @State private var uploadResult: String? = nil
     @State private var exportFinished = false
     @State private var scannerId = UUID()
+    @State private var uploadProgress: Double = 0
+    @State private var currentTask: URLSessionUploadTask? = nil
 
     var body: some View {
         NavigationView {
@@ -29,10 +31,15 @@ struct ContentView: View {
                             Text("Eksport zakończony").font(.footnote).foregroundColor(.green)
                         }
                         Button { Task { await uploadFile(url: url) } } label: {
-                            HStack { if isUploading { ProgressView() }; Text("Wyślij do MebloPlan") }
+                            Text("Wyślij do MebloPlan")
                         }
                         .buttonStyle(.borderedProminent)
                         .disabled(isUploading)
+                        if isUploading {
+                            ProgressView(value: uploadProgress)
+                            Button("Anuluj wysyłkę") { currentTask?.cancel() }
+                                .buttonStyle(.bordered)
+                        }
                         if exportFinished {
                             Button("Skanuj ponownie") {
                                 lastExportURL = nil
@@ -57,11 +64,26 @@ struct ContentView: View {
         }
     }
 
+    class UploadDelegate: NSObject, URLSessionTaskDelegate {
+        var onProgress: (Double) -> Void
+        init(onProgress: @escaping (Double) -> Void) { self.onProgress = onProgress }
+        func urlSession(_ session: URLSession, task: URLSessionTask, didSendBodyData bytesSent: Int64, totalBytesSent: Int64, totalBytesExpectedToSend: Int64) {
+            guard totalBytesExpectedToSend > 0 else { return }
+            let progress = Double(totalBytesSent) / Double(totalBytesExpectedToSend)
+            DispatchQueue.main.async { self.onProgress(progress) }
+        }
+    }
+
     func uploadFile(url: URL) async {
         guard url.startAccessingSecurityScopedResource() else { return }
         defer { url.stopAccessingSecurityScopedResource() }
         isUploading = true
-        defer { isUploading = false }
+        uploadProgress = 0
+        defer {
+            isUploading = false
+            currentTask = nil
+            uploadProgress = 0
+        }
 
         do {
             let token = Bundle.main.object(forInfoDictionaryKey: "API_TOKEN") as? String ?? ""
@@ -76,7 +98,10 @@ struct ContentView: View {
             let config = URLSessionConfiguration.default
             config.timeoutIntervalForRequest = 30
             config.timeoutIntervalForResource = 30
-            let session = URLSession(configuration: config)
+            let delegate = UploadDelegate { progress in
+                self.uploadProgress = progress
+            }
+            let session = URLSession(configuration: config, delegate: delegate, delegateQueue: nil)
 
             let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
             FileManager.default.createFile(atPath: tempURL.path, contents: nil)
@@ -110,12 +135,29 @@ struct ContentView: View {
             try handle.write(contentsOf: "--\(boundary)--\r\n".data(using: .utf8)!)
             try handle.close() // Zamknięcie zapewnia pełne zapisanie danych na dysk
 
-            let (respData, resp) = try await session.upload(for: request, fromFile: tempURL)
+            let (respData, resp) = try await withCheckedThrowingContinuation { continuation in
+                let task = session.uploadTask(with: request, fromFile: tempURL) { data, response, error in
+                    if let error = error {
+                        continuation.resume(throwing: error)
+                    } else {
+                        continuation.resume(returning: (data ?? Data(), response))
+                    }
+                }
+                currentTask = task
+                task.resume()
+            }
+
             if let http = resp as? HTTPURLResponse, http.statusCode == 200 {
                 uploadResult = String(data: respData, encoding: .utf8) ?? "OK"
             } else {
                 uploadResult = "Błąd wysyłki (status: \((resp as? HTTPURLResponse)?.statusCode ?? -1))"
             }
-        } catch { uploadResult = "Błąd: \(error.localizedDescription)" }
+        } catch {
+            if let urlError = error as? URLError, urlError.code == .cancelled {
+                uploadResult = "Wysyłkę anulowano"
+            } else {
+                uploadResult = "Błąd: \(error.localizedDescription)"
+            }
+        }
     }
 }
