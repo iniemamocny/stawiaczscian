@@ -40,6 +40,7 @@ class MainActivity : AppCompatActivity() {
         btnScan = findViewById(R.id.btnScan)
         btnUpload = findViewById(R.id.btnUpload)
         progressBar = findViewById(R.id.progressBar)
+        progressBar.max = 60
 
         btnScan.setOnClickListener { startScan() }
         btnUpload.setOnClickListener { uploadLast() }
@@ -90,6 +91,7 @@ class MainActivity : AppCompatActivity() {
         }
         if (!ensureSession()) return
         btnScan.isEnabled = false
+        progressBar.progress = 0
         progressBar.visibility = View.VISIBLE
         scope.launch {
             val s = session ?: return@launch
@@ -111,7 +113,10 @@ class MainActivity : AppCompatActivity() {
                         collected.add(x); collected.add(y); collected.add(z)
                     }
                     pc.release()
-                    frames++
+                    withContext(Dispatchers.Main) {
+                        frames++
+                        progressBar.progress = frames
+                    }
                 }
                 s.pause()
                 val out = File(getExternalFilesDir(null), "scan_${System.currentTimeMillis()}.ply")
