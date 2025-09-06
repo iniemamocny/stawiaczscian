@@ -6,14 +6,14 @@ on:
   pull_request:
     branches: ["main"]
 
-jobs:
+jobs:  
   node:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-22.04
     defaults:
       run:
         working-directory: apps/api
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v3
       - uses: actions/setup-node@v4
         with:
           node-version: 20
