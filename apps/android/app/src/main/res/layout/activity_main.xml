@@ -23,6 +23,14 @@
         android:visibility="gone"/>
 
     <Button
+        android:id="@+id/btnCancel"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="Anuluj"
+        android:visibility="gone"/>
+
+    <Button
         android:id="@+id/btnScan"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

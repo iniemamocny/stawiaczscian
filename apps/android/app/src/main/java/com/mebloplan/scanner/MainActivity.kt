@@ -27,10 +27,12 @@ class MainActivity : AppCompatActivity() {
     private lateinit var info: TextView
     private lateinit var btnScan: Button
     private lateinit var btnUpload: Button
+    private lateinit var btnCancel: Button
     private lateinit var progressBar: ProgressBar
 
     private var lastPlyFile: File? = null
     private val scope = CoroutineScope(Dispatchers.Default)
+    private var job: Job? = null
     private val CAMERA_PERMISSION_CODE = 1001
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -39,11 +41,13 @@ class MainActivity : AppCompatActivity() {
         info = findViewById(R.id.infoText)
         btnScan = findViewById(R.id.btnScan)
         btnUpload = findViewById(R.id.btnUpload)
+        btnCancel = findViewById(R.id.btnCancel)
         progressBar = findViewById(R.id.progressBar)
         progressBar.max = 60
 
         btnScan.setOnClickListener { startScan() }
         btnUpload.setOnClickListener { uploadLast() }
+        btnCancel.setOnClickListener { job?.cancel() }
     }
 
     override fun onResume() {
@@ -93,7 +97,8 @@ class MainActivity : AppCompatActivity() {
         btnScan.isEnabled = false
         progressBar.progress = 0
         progressBar.visibility = View.VISIBLE
-        scope.launch {
+        btnCancel.visibility = View.VISIBLE
+        job = scope.launch {
             val s = session ?: return@launch
             try {
                 s.resume()
@@ -126,12 +131,20 @@ class MainActivity : AppCompatActivity() {
                     lastPlyFile = out
                     btnScan.isEnabled = true
                     progressBar.visibility = View.GONE
+                    btnCancel.visibility = View.GONE
+                    job = null
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
-                    info.text = "Błąd skanowania: ${e.message}"
+                    if (e is CancellationException) {
+                        info.text = "Gotowy do skanowania"
+                    } else {
+                        info.text = "Błąd skanowania: ${e.message}"
+                    }
                     btnScan.isEnabled = true
                     progressBar.visibility = View.GONE
+                    btnCancel.visibility = View.GONE
+                    job = null
                 }
             }
         }
