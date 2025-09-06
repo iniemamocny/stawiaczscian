@@ -19,6 +19,11 @@ import Ajv from 'ajv';
 import { WebSocketServer, WebSocket } from 'ws';
 import readline from 'readline';
 
+if (!process.env.API_TOKEN) {
+  console.error('API_TOKEN required');
+  process.exit(1);
+}
+
 function parsePositiveInt(value, fallback) {
   const parsed = parseInt(value, 10);
   if (Number.isNaN(parsed) || parsed <= 0) {
