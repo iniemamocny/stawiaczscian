@@ -289,6 +289,32 @@ app.get('/api/scans/:id', async (req, res) => {
   }
 });
 
+app.head('/api/scans/:id/info', async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!/^[0-9a-f-]{36}$/.test(id)) {
+      return res.status(400).end();
+    }
+
+    const baseDir = path.resolve(storageDir);
+    const filePath = path.resolve(baseDir, id, 'info.json');
+    if (!filePath.startsWith(baseDir + path.sep)) {
+      return res.status(403).end();
+    }
+
+    await fs.promises.readFile(filePath, 'utf8');
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Cache-Control', 'public, max-age=86400, immutable');
+    res.status(200).end();
+  } catch (e) {
+    if (e.code === 'ENOENT') {
+      res.status(404).end();
+    } else {
+      res.status(500).end();
+    }
+  }
+});
+
 app.get('/api/scans/:id/info', async (req, res) => {
   try {
     const { id } = req.params;
@@ -311,6 +337,64 @@ app.get('/api/scans/:id/info', async (req, res) => {
       res.status(404).json({ error: 'not found' });
     } else {
       res.status(500).json({ error: 'server error' });
+    }
+  }
+});
+
+app.head('/api/scans/:id/room.glb', async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!/^[0-9a-f-]{36}$/.test(id)) {
+      return res.status(400).end();
+    }
+
+    const baseDir = path.resolve(storageDir);
+    const filePath = path.resolve(baseDir, id, 'room.glb');
+    if (!filePath.startsWith(baseDir + path.sep)) {
+      return res.status(403).end();
+    }
+
+    await fs.promises.access(filePath);
+
+    const infoPath = path.resolve(baseDir, id, 'info.json');
+    let info = {};
+    try {
+      info = JSON.parse(await fs.promises.readFile(infoPath, 'utf8'));
+    } catch {}
+    let etag = info.etag;
+    if (!etag) {
+      etag = await new Promise((resolve, reject) => {
+        const hash = createHash('sha1');
+        const s = fs.createReadStream(filePath);
+        s.on('error', reject);
+        s.on('data', chunk => hash.update(chunk));
+        s.on('end', () => resolve('"' + hash.digest('hex') + '"'));
+      });
+      info.etag = etag;
+      if (!info.status) info.status = 'done';
+      await fs.promises
+        .writeFile(infoPath, JSON.stringify(info, null, 2))
+        .catch(() => {});
+    }
+
+    res.setHeader('ETag', etag);
+
+    if (req.headers['if-none-match'] === etag) {
+      return res.status(304).end();
+    }
+
+    res.setHeader('Content-Type', 'model/gltf-binary');
+    res.setHeader('Cache-Control', 'public, max-age=86400, immutable');
+    const filename = info.filename || 'room.glb';
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.status(200).end();
+  } catch (e) {
+    if (!res.headersSent) {
+      if (e.code === 'ENOENT') {
+        res.status(404).end();
+      } else {
+        res.status(500).end();
+      }
     }
   }
 });
