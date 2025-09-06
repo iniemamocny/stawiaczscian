@@ -60,6 +60,21 @@ describe('API server', () => {
       .expect(413);
   });
 
+  it('rejects invalid metadata', async () => {
+    const res = await request(app)
+      .post('/api/scans')
+      .set('Authorization', 'Bearer testtoken')
+      .field('meta', JSON.stringify({ author: 123 }))
+      .attach('file', Buffer.from('data'), {
+        filename: 'model.obj',
+        contentType: 'application/octet-stream',
+      });
+    assert.equal(res.status, 400);
+    assert(res.body.fields.includes('title'));
+    assert(res.body.fields.includes('filename'));
+    assert(res.body.fields.includes('author'));
+  });
+
   it('uploads file and processes asynchronously', async () => {
     const res = await request(app)
       .post('/api/scans')

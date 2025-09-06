@@ -13,6 +13,7 @@ import PQueue from 'p-queue';
 import { fileTypeFromFile } from 'file-type';
 import rateLimit from 'express-rate-limit';
 import morgan from 'morgan';
+import Ajv from 'ajv';
 
 function parsePositiveInt(value, fallback) {
   const parsed = parseInt(value, 10);
@@ -26,6 +27,17 @@ function parsePositiveInt(value, fallback) {
 const uploadDir = path.resolve(process.env.UPLOAD_DIR || 'uploads');
 const storageDir = path.resolve(process.env.STORAGE_DIR || 'storage');
 const isTest = process.env.NODE_ENV === 'test';
+const ajv = new Ajv({ allErrors: true });
+const metaSchema = {
+  type: 'object',
+  properties: {
+    title: { type: 'string' },
+    author: { type: 'string' },
+    filename: { type: 'string' },
+  },
+  required: ['title', 'author', 'filename'],
+  additionalProperties: false,
+};
 
 async function initDirs() {
   await fs.promises.mkdir(uploadDir, { recursive: true });
@@ -213,6 +225,17 @@ app.post('/api/scans', upload.single('file'), async (req, res) => {
     if (meta && Buffer.byteLength(JSON.stringify(meta)) > maxMetaBytes) {
       await fs.promises.unlink(file.path).catch(() => {});
       return res.status(400).json({ error: 'metadata too large' });
+    }
+
+    if (meta) {
+      const valid = ajv.validate(metaSchema, meta);
+      if (!valid) {
+        await fs.promises.unlink(file.path).catch(() => {});
+        const fields = (ajv.errors || []).map(
+          e => e.instancePath.slice(1) || e.params?.missingProperty || e.params?.additionalProperty
+        );
+        return res.status(400).json({ error: 'invalid metadata', fields });
+      }
     }
 
     const id = randomUUID();
