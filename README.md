@@ -28,3 +28,18 @@ Pobrane modele GLB można cache'ować przez 24 godziny dzięki nagłówkowi
 Serwer wysyła też `Last-Modified`, więc klienci mogą użyć nagłówka
 `If-Modified-Since`, aby uniknąć pobierania niezmienionych plików (odpowiedź
 `304`).
+
+## Docker
+
+### Budowa obrazu
+
+```bash
+docker build -t stawiaczscian-api apps/api
+```
+
+### Uruchamianie
+
+```bash
+docker run -p 3000:3000 stawiaczscian-api
+```
+
