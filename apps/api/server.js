@@ -186,22 +186,21 @@ app.post('/api/scans', upload.single('file'), async (req, res) => {
       return res.status(400).json({ error: 'metadata too large' });
     }
 
-    await queue.add(async () => {
-      const id = randomUUID();
-      const inputPath = file.path;
-      const outDir = path.join(storageDir, id);
+    const id = randomUUID();
+    const outDir = path.join(storageDir, id);
+    await fs.promises.mkdir(outDir, { recursive: true });
+
+    const inputPath = path.join(outDir, 'input' + ext);
+    await fs.promises.rename(file.path, inputPath);
+
+    const infoPath = path.join(outDir, 'info.json');
+    const info = { status: 'pending' };
+    if (meta) info.meta = meta;
+    await fs.promises.writeFile(infoPath, JSON.stringify(info, null, 2));
+
+    queue.add(async () => {
       const glbPath = path.join(outDir, 'room.glb');
-
       try {
-        await fs.promises.mkdir(outDir, { recursive: true });
-
-        if (meta) {
-          await fs.promises.writeFile(
-            path.join(outDir, 'info.json'),
-            JSON.stringify(meta, null, 2)
-          );
-        }
-
         const blender = process.env.BLENDER_PATH || 'blender';
         const script = path.join(
           path.dirname(new URL(import.meta.url).pathname),
@@ -217,8 +216,7 @@ app.post('/api/scans', upload.single('file'), async (req, res) => {
             if (code === 0) {
               try {
                 await fs.promises.access(glbPath);
-                const base = `${req.protocol}://${req.get('host')}`;
-                res.json({ id, url: `${base}/api/scans/${id}/room.glb` });
+                info.status = 'done';
                 resolve();
               } catch {
                 reject(new Error('conversion failed'));
@@ -228,13 +226,52 @@ app.post('/api/scans', upload.single('file'), async (req, res) => {
             }
           });
         });
+      } catch (e) {
+        console.error(e);
+        info.status = 'error';
       } finally {
+        await fs.promises
+          .writeFile(infoPath, JSON.stringify(info, null, 2))
+          .catch(() => {});
         fs.promises.unlink(inputPath).catch(() => {});
       }
     });
+
+    res.setHeader('Location', `/api/scans/${id}`);
+    return res.status(202).json({ id });
   } catch (e) {
     console.error(e);
     if (!res.headersSent) {
+      res.status(500).json({ error: 'server error' });
+    }
+  }
+});
+
+app.get('/api/scans/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!/^[0-9a-f-]{36}$/.test(id)) {
+      return res.status(400).json({ error: 'invalid id' });
+    }
+
+    const baseDir = path.resolve(storageDir);
+    const infoPath = path.resolve(baseDir, id, 'info.json');
+    if (!infoPath.startsWith(baseDir + path.sep)) {
+      return res.status(403).json({ error: 'forbidden' });
+    }
+
+    const data = await fs.promises.readFile(infoPath, 'utf8');
+    const info = JSON.parse(data);
+    const result = { status: info.status || 'pending' };
+    const base = `${req.protocol}://${req.get('host')}`;
+    if (result.status === 'done') {
+      result.url = `${base}/api/scans/${id}/room.glb`;
+    }
+    res.json(result);
+  } catch (e) {
+    if (e.code === 'ENOENT') {
+      res.status(404).json({ error: 'not found' });
+    } else {
       res.status(500).json({ error: 'server error' });
     }
   }
