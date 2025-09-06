@@ -1,5 +1,7 @@
 # 3dskaner monorepo
 
+[![CI](https://github.com/stawiaczscian/stawiaczscian/actions/workflows/ci.yml/badge.svg)](https://github.com/stawiaczscian/stawiaczscian/actions/workflows/ci.yml)
+
 ## Dozwolone rozszerzenia
 
 | Rozszerzenie | Content-Type |
