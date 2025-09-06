@@ -134,6 +134,26 @@ app.use((req, res, next) => {
   next();
 });
 
+app.get('/api/scans', async (req, res) => {
+  try {
+    const page = parsePositiveInt(req.query.page, 1);
+    const limit = parsePositiveInt(req.query.limit, 100);
+    const entries = await fs.promises.readdir(storageDir, {
+      withFileTypes: true,
+    });
+    const ids = entries
+      .filter(
+        entry => entry.isDirectory() && /^[0-9a-f-]{36}$/.test(entry.name)
+      )
+      .map(entry => entry.name)
+      .sort();
+    const start = (page - 1) * limit;
+    res.json(ids.slice(start, start + limit));
+  } catch (e) {
+    res.status(500).json({ error: 'server error' });
+  }
+});
+
 app.post('/api/scans', upload.single('file'), async (req, res) => {
   try {
     const file = req.file;

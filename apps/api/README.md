@@ -85,6 +85,18 @@ const info = JSON.parse(await fs.readFile(`${dir}/${id}/info.json`, 'utf8'));
 console.log(info.author);
 ```
 
+## Listing scans
+
+Retrieve identifiers of stored scans:
+
+```bash
+curl -H "Authorization: Bearer $API_TOKEN" \
+  "http://localhost:4000/api/scans?page=1&limit=20"
+```
+
+The response is a JSON array of scan IDs. Use `page` (1-based) and `limit`
+parameters to paginate results. Defaults are `1` and `100` respectively.
+
 ## Deleting scans
 
 Remove stored scan data when no longer needed:
@@ -100,7 +112,8 @@ non-existing scans respond with `404`.
 
 ## Responses
 
-Both `POST http://localhost:4000/api/scans`,
+The endpoints `POST http://localhost:4000/api/scans`,
+`GET http://localhost:4000/api/scans`,
 `GET http://localhost:4000/api/scans/{id}/room.glb`,
 `GET http://localhost:4000/api/scans/{id}/info` and
 `DELETE http://localhost:4000/api/scans/{id}` may return:
