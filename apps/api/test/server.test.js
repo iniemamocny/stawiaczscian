@@ -57,7 +57,7 @@ describe('API server', () => {
       pollRes = await request(app)
         .get(`/api/scans/${res.body.id}`)
         .set('Authorization', 'Bearer testtoken');
-      status = pollRes.body.status;
+      status = pollRes.body.status || 'pending';
       if (status === 'pending') await new Promise(r => setTimeout(r, 10));
     }
     assert.equal(pollRes.body.status, 'done');
@@ -73,6 +73,33 @@ describe('API server', () => {
       .get(`/api/scans/${missing}`)
       .set('Authorization', 'Bearer testtoken')
       .expect(404);
+  });
+
+  it('serves attachment and respects filename in info.json', async () => {
+    const res1 = await request(app)
+      .get(`/api/scans/${uploadedId}/room.glb`)
+      .set('Authorization', 'Bearer testtoken');
+    assert.equal(
+      res1.headers['content-disposition'],
+      'attachment; filename="room.glb"'
+    );
+
+    const infoPath = path.join(
+      process.env.STORAGE_DIR,
+      uploadedId,
+      'info.json'
+    );
+    const info = JSON.parse(await fs.readFile(infoPath, 'utf8'));
+    info.filename = 'custom.glb';
+    await fs.writeFile(infoPath, JSON.stringify(info, null, 2));
+
+    const res2 = await request(app)
+      .get(`/api/scans/${uploadedId}/room.glb`)
+      .set('Authorization', 'Bearer testtoken');
+    assert.equal(
+      res2.headers['content-disposition'],
+      'attachment; filename="custom.glb"'
+    );
   });
 
   it('deletes scan directory', async () => {
