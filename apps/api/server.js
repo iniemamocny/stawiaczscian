@@ -472,149 +472,105 @@ app.get('/api/scans/:id/info', async (req, res) => {
   }
 });
 
+async function prepareGlbResponse(id, req, res) {
+  if (!/^[0-9a-f-]{36}$/.test(id)) {
+    const err = new Error('invalid id');
+    err.status = 400;
+    throw err;
+  }
+
+  const baseDir = path.resolve(storageDir);
+  const filePath = path.resolve(baseDir, id, 'room.glb');
+  if (path.relative(baseDir, filePath).startsWith('..')) {
+    const err = new Error('forbidden');
+    err.status = 403;
+    throw err;
+  }
+
+  const stat = await fs.promises.stat(filePath);
+
+  const infoPath = path.resolve(baseDir, id, 'info.json');
+  let info = {};
+  try {
+    info = JSON.parse(await fs.promises.readFile(infoPath, 'utf8'));
+  } catch {}
+  let etag = info.etag;
+  if (!etag) {
+    etag = await new Promise((resolve, reject) => {
+      const hash = createHash('sha1');
+      const s = fs.createReadStream(filePath);
+      s.on('error', reject);
+      s.on('data', chunk => hash.update(chunk));
+      s.on('end', () => resolve('"' + hash.digest('hex') + '"'));
+    });
+    info.etag = etag;
+    if (!info.status) info.status = 'done';
+    await fs.promises
+      .writeFile(infoPath, JSON.stringify(info, null, 2))
+      .catch(() => {});
+  }
+
+  res.setHeader('ETag', etag);
+  res.setHeader('Content-Length', stat.size);
+  res.setHeader('Last-Modified', stat.mtime.toUTCString());
+
+  if (req.headers['if-none-match'] === etag) {
+    res.status(304).end();
+    return null;
+  }
+  const ims = req.headers['if-modified-since'];
+  if (ims) {
+    const since = new Date(ims);
+    if (!isNaN(since) && stat.mtime <= since) {
+      res.status(304).end();
+      return null;
+    }
+  }
+
+  res.setHeader('Content-Type', 'model/gltf-binary');
+  res.setHeader('Cache-Control', 'public, max-age=86400, immutable');
+  const filename = sanitizeFilename(info.filename || DEFAULT_FILENAME);
+  res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+
+  return { info, stat, filePath };
+}
+
+function handleGlbError(res, e, head) {
+  if (res.headersSent) return;
+  if (e?.status === 400) {
+    return head ? res.status(400).end() : res.status(400).json({ error: 'invalid id' });
+  }
+  if (e?.status === 403) {
+    return head ? res.status(403).end() : res.status(403).json({ error: 'forbidden' });
+  }
+  if (e?.code === 'ENOENT') {
+    return head ? res.status(404).end() : res.status(404).json({ error: 'not found' });
+  }
+  if (head) {
+    res.status(500).end();
+  } else {
+    res.status(500).json({ error: 'server error' });
+  }
+}
+
+
 app.head('/api/scans/:id/room.glb', async (req, res) => {
   try {
-    const { id } = req.params;
-    if (!/^[0-9a-f-]{36}$/.test(id)) {
-      return res.status(400).end();
-    }
-
-    const baseDir = path.resolve(storageDir);
-    const filePath = path.resolve(baseDir, id, 'room.glb');
-    if (path.relative(baseDir, filePath).startsWith('..')) {
-      return res.status(403).end();
-    }
-
-    const stat = await fs.promises.stat(filePath);
-
-    const infoPath = path.resolve(baseDir, id, 'info.json');
-    let info = {};
-    try {
-      info = JSON.parse(await fs.promises.readFile(infoPath, 'utf8'));
-    } catch {}
-    let etag = info.etag;
-    if (!etag) {
-      etag = await new Promise((resolve, reject) => {
-        const hash = createHash('sha1');
-        const s = fs.createReadStream(filePath);
-        s.on('error', reject);
-        s.on('data', chunk => hash.update(chunk));
-        s.on('end', () => resolve('"' + hash.digest('hex') + '"'));
-      });
-      info.etag = etag;
-      if (!info.status) info.status = 'done';
-      await fs.promises
-        .writeFile(infoPath, JSON.stringify(info, null, 2))
-        .catch(() => {});
-    }
-
-    res.setHeader('ETag', etag);
-    res.setHeader('Content-Length', stat.size);
-    res.setHeader('Last-Modified', stat.mtime.toUTCString());
-
-    if (req.headers['if-none-match'] === etag) {
-      return res.status(304).end();
-    }
-    const imsHead = req.headers['if-modified-since'];
-    if (imsHead) {
-      const since = new Date(imsHead);
-      if (!isNaN(since) && stat.mtime <= since) {
-        return res.status(304).end();
-      }
-    }
-
-    res.setHeader('Content-Type', 'model/gltf-binary');
-    res.setHeader('Cache-Control', 'public, max-age=86400, immutable');
-    const filename = sanitizeFilename(info.filename || DEFAULT_FILENAME);
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    res.status(200).end();
+    const result = await prepareGlbResponse(req.params.id, req, res);
+    if (result) res.status(200).end();
   } catch (e) {
-    if (!res.headersSent) {
-      if (e.code === 'ENOENT') {
-        res.status(404).end();
-      } else {
-        res.status(500).end();
-      }
-    }
+    handleGlbError(res, e, true);
   }
 });
 
 app.get('/api/scans/:id/room.glb', async (req, res) => {
   try {
-    const { id } = req.params;
-    if (!/^[0-9a-f-]{36}$/.test(id)) {
-      return res.status(400).json({ error: 'invalid id' });
+    const result = await prepareGlbResponse(req.params.id, req, res);
+    if (result) {
+      await pipeline(fs.createReadStream(result.filePath), res);
     }
-
-    const baseDir = path.resolve(storageDir);
-    const filePath = path.resolve(baseDir, id, 'room.glb');
-    if (path.relative(baseDir, filePath).startsWith('..')) {
-      return res.status(403).json({ error: 'forbidden' });
-    }
-
-    const stat = await fs.promises.stat(filePath);
-
-    const infoPath = path.resolve(baseDir, id, 'info.json');
-    let info = {};
-    try {
-      info = JSON.parse(await fs.promises.readFile(infoPath, 'utf8'));
-    } catch {}
-    let etag = info.etag;
-    if (!etag) {
-      etag = await new Promise((resolve, reject) => {
-        const hash = createHash('sha1');
-        const s = fs.createReadStream(filePath);
-        s.on('error', reject);
-        s.on('data', chunk => hash.update(chunk));
-        s.on('end', () => resolve('"' + hash.digest('hex') + '"'));
-      });
-      info.etag = etag;
-      if (!info.status) info.status = 'done';
-      await fs.promises
-        .writeFile(infoPath, JSON.stringify(info, null, 2))
-        .catch(() => {});
-    }
-
-    res.setHeader('ETag', etag);
-    res.setHeader('Content-Length', stat.size);
-    res.setHeader('Last-Modified', stat.mtime.toUTCString());
-
-    if (req.headers['if-none-match'] === etag) {
-      return res.status(304).end();
-    }
-    const ims = req.headers['if-modified-since'];
-    if (ims) {
-      const since = new Date(ims);
-      if (!isNaN(since) && stat.mtime <= since) {
-        return res.status(304).end();
-      }
-    }
-
-    res.setHeader('Content-Type', 'model/gltf-binary');
-    res.setHeader('Cache-Control', 'public, max-age=86400, immutable');
-    const filename = sanitizeFilename(info.filename || DEFAULT_FILENAME);
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-
-    const stream = fs.createReadStream(filePath);
-    stream.on('error', err => {
-      if (!res.headersSent) {
-        if (err.code === 'ENOENT') {
-          res.status(404).json({ error: 'not found' });
-        } else {
-          res.status(500).json({ error: 'server error' });
-        }
-      }
-    });
-
-    await pipeline(stream, res);
   } catch (e) {
-    if (!res.headersSent) {
-      if (e.code === 'ENOENT') {
-        res.status(404).json({ error: 'not found' });
-      } else {
-        res.status(500).json({ error: 'server error' });
-      }
-    }
+    handleGlbError(res, e, false);
   }
 });
 
