@@ -118,7 +118,7 @@ function sendProgress(id, progress) {
   if (!wss) return;
   const data = JSON.stringify({ id, progress });
   for (const client of wss.clients) {
-    if (client.readyState === WebSocket.OPEN) {
+    if (client.readyState === WebSocket.OPEN && client.id === id) {
       client.send(data);
     }
   }
@@ -646,8 +646,11 @@ if (!isTest) {
     const token = authHeader?.startsWith('Bearer ')
       ? authHeader.slice(7)
       : authHeader;
-    if (req.url === '/ws' && token === process.env.API_TOKEN) {
+    const url = new URL(req.url, 'http://localhost');
+    const id = url.searchParams.get('id');
+    if (url.pathname === '/ws' && token === process.env.API_TOKEN) {
       wss.handleUpgrade(req, socket, head, ws => {
+        ws.id = id;
         wss.emit('connection', ws, req);
       });
     } else {
