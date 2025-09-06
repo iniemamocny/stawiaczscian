@@ -86,11 +86,12 @@ struct ContentView: View {
 
   func uploadFile(url: URL) async {
     let monitor = NWPathMonitor()
-    let path = await withCheckedContinuation { continuation in
-      monitor.pathUpdateHandler = { path in
-        continuation.resume(returning: path)
-      }
-      monitor.start(queue: DispatchQueue.global(qos: .background))
+    monitor.start(queue: DispatchQueue.global(qos: .background))
+    var path = monitor.currentPath
+    if path.status == .requiresConnection {
+      // Give the monitor up to one second to report an updated path.
+      try? await Task.sleep(nanoseconds: 1_000_000_000)
+      path = monitor.currentPath
     }
     monitor.cancel()
     guard path.status == .satisfied else {
