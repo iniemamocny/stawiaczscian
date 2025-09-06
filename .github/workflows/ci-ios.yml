@@ -8,6 +8,7 @@ on:
 
 jobs:
   ios:
+    if: ${{ hashFiles('apps/ios/*.xcodeproj', 'apps/ios/*.xcworkspace') != '' }}
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
