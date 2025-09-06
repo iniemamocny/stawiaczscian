@@ -399,9 +399,17 @@ app.head('/api/scans/:id/info', async (req, res) => {
       return res.status(403).end();
     }
 
-    await fs.promises.readFile(filePath, 'utf8');
+    const stat = await fs.promises.stat(filePath);
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 'public, max-age=86400, immutable');
+    res.setHeader('Last-Modified', stat.mtime.toUTCString());
+    const ims = req.headers['if-modified-since'];
+    if (ims) {
+      const since = new Date(ims);
+      if (!isNaN(since) && stat.mtime <= since) {
+        return res.status(304).end();
+      }
+    }
     res.status(200).end();
   } catch (e) {
     if (e.code === 'ENOENT') {
@@ -425,9 +433,18 @@ app.get('/api/scans/:id/info', async (req, res) => {
       return res.status(403).json({ error: 'forbidden' });
     }
 
-    const data = await fs.promises.readFile(filePath, 'utf8');
+    const stat = await fs.promises.stat(filePath);
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 'public, max-age=86400, immutable');
+    res.setHeader('Last-Modified', stat.mtime.toUTCString());
+    const ims = req.headers['if-modified-since'];
+    if (ims) {
+      const since = new Date(ims);
+      if (!isNaN(since) && stat.mtime <= since) {
+        return res.status(304).end();
+      }
+    }
+    const data = await fs.promises.readFile(filePath, 'utf8');
     res.send(data);
   } catch (e) {
     if (e.code === 'ENOENT') {
@@ -476,9 +493,17 @@ app.head('/api/scans/:id/room.glb', async (req, res) => {
 
     res.setHeader('ETag', etag);
     res.setHeader('Content-Length', stat.size);
+    res.setHeader('Last-Modified', stat.mtime.toUTCString());
 
     if (req.headers['if-none-match'] === etag) {
       return res.status(304).end();
+    }
+    const imsHead = req.headers['if-modified-since'];
+    if (imsHead) {
+      const since = new Date(imsHead);
+      if (!isNaN(since) && stat.mtime <= since) {
+        return res.status(304).end();
+      }
     }
 
     res.setHeader('Content-Type', 'model/gltf-binary');
@@ -535,9 +560,17 @@ app.get('/api/scans/:id/room.glb', async (req, res) => {
 
     res.setHeader('ETag', etag);
     res.setHeader('Content-Length', stat.size);
+    res.setHeader('Last-Modified', stat.mtime.toUTCString());
 
     if (req.headers['if-none-match'] === etag) {
       return res.status(304).end();
+    }
+    const ims = req.headers['if-modified-since'];
+    if (ims) {
+      const since = new Date(ims);
+      if (!isNaN(since) && stat.mtime <= since) {
+        return res.status(304).end();
+      }
     }
 
     res.setHeader('Content-Type', 'model/gltf-binary');
