@@ -2,7 +2,7 @@
 import express from 'express';
 import multer from 'multer';
 import { spawn } from 'child_process';
-import { randomUUID } from 'crypto';
+import { randomUUID, createHash } from 'crypto';
 import path from 'path';
 import fs from 'fs';
 import { pipeline } from 'stream/promises';
@@ -275,6 +275,21 @@ app.get('/api/scans/:id/room.glb', async (req, res) => {
     }
 
     await fs.promises.access(filePath);
+
+    const etag = await new Promise((resolve, reject) => {
+      const hash = createHash('sha1');
+      const s = fs.createReadStream(filePath);
+      s.on('error', reject);
+      s.on('data', chunk => hash.update(chunk));
+      s.on('end', () => resolve('"' + hash.digest('hex') + '"'));
+    });
+
+    res.setHeader('ETag', etag);
+
+    if (req.headers['if-none-match'] === etag) {
+      return res.status(304).end();
+    }
+
     res.setHeader('Content-Type', 'model/gltf-binary');
     res.setHeader('Cache-Control', 'public, max-age=86400, immutable');
 

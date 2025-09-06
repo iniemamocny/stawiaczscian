@@ -107,6 +107,12 @@ paths:
           schema:
             type: string
             format: uuid
+        - name: If-None-Match
+          in: header
+          description: ETag previously returned for the model.
+          required: false
+          schema:
+            type: string
       responses:
         '200':
           description: GLB file.
@@ -116,11 +122,22 @@ paths:
               schema:
                 type: string
               example: public, max-age=86400, immutable
+            ETag:
+              description: Entity tag for the model.
+              schema:
+                type: string
           content:
             model/gltf-binary:
               schema:
                 type: string
                 format: binary
+        '304':
+          description: Not modified.
+          headers:
+            ETag:
+              description: Entity tag for the model.
+              schema:
+                type: string
         '400':
           description: Bad request.
         '401':
