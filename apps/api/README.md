@@ -85,6 +85,21 @@ const info = JSON.parse(await fs.readFile(`${dir}/${id}/info.json`, 'utf8'));
 console.log(info.author);
 ```
 
+## Checking progress
+
+Poll the conversion status and progress while the scan is being processed:
+
+```bash
+curl -H "Authorization: Bearer $API_TOKEN" \
+  http://localhost:4000/api/scans/{id}
+```
+
+The response JSON includes:
+
+- `status` – current state (`pending`, `done` or `error`)
+- `progress` – conversion progress in percent (0–100)
+- `url` – download link for the GLB file when `status` is `done`
+
 ## Listing scans
 
 Retrieve identifiers of stored scans:

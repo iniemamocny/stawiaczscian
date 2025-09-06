@@ -81,9 +81,11 @@ describe('API server', () => {
         .get(`/api/scans/${res.body.id}`)
         .set('Authorization', 'Bearer testtoken');
       status = pollRes.body.status || 'pending';
+      assert.equal(typeof pollRes.body.progress, 'number');
       if (status === 'pending') await new Promise(r => setTimeout(r, 10));
     }
     assert.equal(pollRes.body.status, 'done');
+    assert.equal(pollRes.body.progress, 100);
     assert.match(
       pollRes.body.url,
       new RegExp(`/api/scans/${res.body.id}/room\\.glb$`)

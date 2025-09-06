@@ -223,7 +223,7 @@ app.post('/api/scans', upload.single('file'), async (req, res) => {
     await fs.promises.rename(file.path, inputPath);
 
     const infoPath = path.join(outDir, 'info.json');
-    const info = { status: 'pending', filename: 'room.glb' };
+    const info = { status: 'pending', filename: 'room.glb', progress: 0 };
     if (meta) {
       if (meta.filename) info.filename = String(meta.filename);
       info.meta = meta;
@@ -270,6 +270,7 @@ app.post('/api/scans', upload.single('file'), async (req, res) => {
         console.error(e);
         info.status = 'error';
       } finally {
+        info.progress = 100;
         await fs.promises
           .writeFile(infoPath, JSON.stringify(info, null, 2))
           .catch(() => {});
@@ -303,7 +304,10 @@ app.get('/api/scans/:id', async (req, res) => {
 
     const data = await fs.promises.readFile(infoPath, 'utf8');
     const info = JSON.parse(data);
-    const result = { status: info.status || 'pending' };
+    const result = {
+      status: info.status || 'pending',
+      progress: typeof info.progress === 'number' ? info.progress : 0,
+    };
     const base = `${req.protocol}://${req.get('host')}`;
     if (result.status === 'done') {
       result.url = `${base}/api/scans/${id}/room.glb`;
