@@ -21,8 +21,10 @@ before(async () => {
   process.env.BLENDER_PATH = path.join(tmpDir, 'mock_blender.js');
   process.env.NODE_ENV = 'test';
   process.env.MAX_UPLOAD_BYTES = '10';
+  process.env.CONCURRENCY = '1';
+  process.env.QUEUE_LIMIT = '1';
 
-  const blenderMock = `#!/usr/bin/env node\nimport fs from 'fs';\nconst args = process.argv.slice(2);\nif (args[0] === '--version') process.exit(0);\nconst out = args[args.length - 1];\nfs.writeFileSync(out, '');\n`;
+  const blenderMock = `#!/usr/bin/env node\nimport fs from 'fs';\nconst args = process.argv.slice(2);\nif (args[0] === '--version') process.exit(0);\nconst out = args[args.length - 1];\nsetTimeout(() => fs.writeFileSync(out, ''), 100);\n`;
   await fs.writeFile(process.env.BLENDER_PATH, blenderMock);
   await fs.chmod(process.env.BLENDER_PATH, 0o755);
 
@@ -46,6 +48,14 @@ describe('API server', () => {
         filename: 'model.txt',
         contentType: 'text/plain',
       })
+      .expect(400);
+  });
+
+  it('returns 400 when file is missing', async () => {
+    await request(app)
+      .post('/api/scans')
+      .set('Authorization', 'Bearer testtoken')
+      .field('meta', '{}')
       .expect(400);
   });
 
@@ -75,6 +85,21 @@ describe('API server', () => {
     assert(res.body.fields.includes('author'));
   });
 
+  it('returns 400 when metadata is too large', async () => {
+    process.env.MAX_META_BYTES = '10';
+    const res = await request(app)
+      .post('/api/scans')
+      .set('Authorization', 'Bearer testtoken')
+      .field('meta', 'x'.repeat(20))
+      .attach('file', Buffer.from('data'), {
+        filename: 'model.obj',
+        contentType: 'application/octet-stream',
+      });
+    assert.equal(res.status, 400);
+    assert.equal(res.body.error, 'metadata too large');
+    delete process.env.MAX_META_BYTES;
+  });
+
   it('uploads file and processes asynchronously', async () => {
     const res = await request(app)
       .post('/api/scans')
@@ -91,13 +116,13 @@ describe('API server', () => {
 
     let status = 'pending';
     let pollRes;
-    for (let i = 0; i < 20 && status === 'pending'; i++) {
+    for (let i = 0; i < 10 && status === 'pending'; i++) {
       pollRes = await request(app)
         .get(`/api/scans/${res.body.id}`)
         .set('Authorization', 'Bearer testtoken');
       status = pollRes.body.status || 'pending';
       assert.equal(typeof pollRes.body.progress, 'number');
-      if (status === 'pending') await new Promise(r => setTimeout(r, 10));
+      if (status === 'pending') await new Promise(r => setTimeout(r, 20));
     }
     assert.equal(pollRes.body.status, 'done');
     assert.equal(pollRes.body.progress, 100);
@@ -105,6 +130,13 @@ describe('API server', () => {
       pollRes.body.url,
       new RegExp(`/api/scans/${res.body.id}/room\\.glb$`)
     );
+  });
+
+  it('returns 400 for invalid id format', async () => {
+    await request(app)
+      .get('/api/scans/not-a-uuid')
+      .set('Authorization', 'Bearer testtoken')
+      .expect(400);
   });
 
   it('responds 404 for missing id', async () => {
@@ -181,5 +213,30 @@ describe('API server', () => {
       .delete(`/api/scans/${missing}`)
       .set('Authorization', 'Bearer testtoken')
       .expect(404);
+  });
+
+  it('enforces queue limit', async () => {
+    const res1 = await request(app)
+      .post('/api/scans')
+      .set('Authorization', 'Bearer testtoken')
+      .attach('file', Buffer.from('data'), {
+        filename: 'model.obj',
+        contentType: 'application/octet-stream',
+      });
+
+    const res2 = await request(app)
+      .post('/api/scans')
+      .set('Authorization', 'Bearer testtoken')
+      .attach('file', Buffer.from('data'), {
+        filename: 'model.obj',
+        contentType: 'application/octet-stream',
+      });
+
+    assert.equal(res2.status, 429);
+    await new Promise(r => setTimeout(r, 300));
+    await fs.rm(path.join(process.env.STORAGE_DIR, res1.body.id), {
+      recursive: true,
+      force: true,
+    });
   });
 });
