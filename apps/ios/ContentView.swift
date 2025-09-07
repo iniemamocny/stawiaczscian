@@ -112,13 +112,10 @@ struct ContentView: View {
     do {
       let token = Bundle.main.object(forInfoDictionaryKey: "API_TOKEN") as? String ?? ""
       let apiUrlString = Bundle.main.object(forInfoDictionaryKey: "API_URL") as? String ?? ""
-      let boundary = "Boundary-\(UUID().uuidString)"
       guard let apiUrl = URL(string: apiUrlString) else { return }
       var request = URLRequest(url: apiUrl)
       request.httpMethod = "POST"
       request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-      request.setValue(
-        "multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
 
       let config = URLSessionConfiguration.default
       config.timeoutIntervalForRequest = 30
@@ -128,45 +125,19 @@ struct ContentView: View {
       }
       let session = URLSession(configuration: config, delegate: delegate, delegateQueue: nil)
 
-      let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-      FileManager.default.createFile(atPath: tempURL.path, contents: nil)
-      let handle = try FileHandle(forWritingTo: tempURL)
-      defer {
-        try? FileManager.default.removeItem(at: tempURL)
-      }
-      // meta
+      var form = MultipartFormData()
       let meta = ["platform": "ios", "format": url.pathExtension.lowercased()]
       let metaJSON = try JSONSerialization.data(withJSONObject: meta)
-      try handle.write(contentsOf: "--\(boundary)\r\n".data(using: .utf8)!)
-      try handle.write(
-        contentsOf: "Content-Disposition: form-data; name=\"meta\"\r\n".data(using: .utf8)!)
-      try handle.write(contentsOf: "Content-Type: application/json\r\n\r\n".data(using: .utf8)!)
-      try handle.write(contentsOf: metaJSON)
-      try handle.write(contentsOf: "\r\n".data(using: .utf8)!)
-      // file
-      try handle.write(contentsOf: "--\(boundary)\r\n".data(using: .utf8)!)
-      try handle.write(
-        contentsOf:
-          "Content-Disposition: form-data; name=\"file\"; filename=\"\(url.lastPathComponent)\"\r\n"
-          .data(using: .utf8)!)
-      try handle.write(
-        contentsOf: "Content-Type: application/octet-stream\r\n\r\n".data(using: .utf8)!)
-      let inputHandle = try FileHandle(forReadingFrom: url)
-      defer { try? inputHandle.close() }
-      while true {
-        let chunk = try inputHandle.read(upToCount: 64 * 1024)
-        if let chunk = chunk, !chunk.isEmpty {
-          try handle.write(contentsOf: chunk)
-        } else {
-          break
-        }
-      }
-      try handle.write(contentsOf: "\r\n".data(using: .utf8)!)
-      try handle.write(contentsOf: "--\(boundary)--\r\n".data(using: .utf8)!)
-      try handle.close()  // Zamknięcie zapewnia pełne zapisanie danych na dysk
+      form.append(name: "meta", data: metaJSON, mimeType: "application/json")
+      let fileData = try Data(contentsOf: url)
+      form.append(
+        name: "file", data: fileData, filename: url.lastPathComponent,
+        mimeType: "application/octet-stream")
+      let bodyData = form.finalize()
+      request.setValue(form.contentType, forHTTPHeaderField: "Content-Type")
 
       let (respData, resp) = try await withCheckedThrowingContinuation { continuation in
-        let task = session.uploadTask(with: request, fromFile: tempURL) { data, response, error in
+        let task = session.uploadTask(with: request, from: bodyData) { data, response, error in
           if let error = error {
             continuation.resume(throwing: error)
           } else {
